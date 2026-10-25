@@ -1,0 +1,12 @@
+{
+  "name": "MeshPay",
+  "short_name": "MeshPay",
+  "description": "Sign USDC payments with no internet and settle them on Arc later.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9f9fc",
+  "theme_color": "#f9f9fc",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

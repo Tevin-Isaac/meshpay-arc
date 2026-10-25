@@ -1,0 +1,92 @@
+import { ArrowUpRight, ArrowDownLeft, Plus, ScanLine, ShieldCheck } from 'lucide-react'
+import { TokenUSDC } from '@web3icons/react'
+import { fmtUsdc, timeAgo } from '@/lib/format'
+import { roleOf } from '@/lib/items'
+import { useMeshState } from '@/lib/store'
+import { useMyAddresses, useSpendable } from '@/hooks/useMeshData'
+
+interface Actions {
+  onSend: () => void
+  onReceive: () => void
+  onScan: () => void
+  onAdd: () => void
+  onLimits: () => void
+}
+
+export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits }: Actions) {
+  const { spendable, reserve, committed } = useSpendable()
+  const { items } = useMeshState()
+  const mine = useMyAddresses()
+  const incoming = items
+    .filter((i) => i.status === 'pending' && roleOf(i, mine) === 'in')
+    .reduce((sum, i) => sum + BigInt(i.amount), 0n)
+
+  const sub =
+    spendable === null
+      ? 'Add funds while online to start paying offline.'
+      : reserve.live
+        ? 'Live from Arc. Spendable with no internet.'
+        : `Last seen ${reserve.at ? timeAgo(reserve.at) : 'earlier'}. Spendable with no internet.`
+
+  const actions = [
+    { label: 'Send', icon: ArrowUpRight, onClick: onSend, primary: true },
+    { label: 'Receive', icon: ArrowDownLeft, onClick: onReceive },
+    { label: 'Scan', icon: ScanLine, onClick: onScan },
+    { label: 'Add', icon: Plus, onClick: onAdd },
+  ]
+
+  return (
+    <section className="glass rounded-3xl p-5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
+          Offline balance
+        </span>
+        <button
+          onClick={onLimits}
+          className="flex min-h-11 items-center gap-1 text-xs font-semibold"
+          style={{ color: 'var(--accent-hover)' }}
+        >
+          <ShieldCheck className="size-4" /> Limits
+        </button>
+      </div>
+
+      <div className="-mt-1 flex items-center gap-2">
+        <TokenUSDC variant="branded" size={28} />
+        <span className="display text-5xl font-bold tabular-nums" style={{ color: 'var(--ink)' }}>
+          {spendable === null ? '—' : fmtUsdc(spendable)}
+        </span>
+        <span className="mt-3 text-lg font-medium" style={{ color: 'var(--subtle)' }}>
+          USDC
+        </span>
+      </div>
+      <p className="mt-1.5 text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+        {sub}
+      </p>
+
+      {(committed > 0n || incoming > 0n) && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
+          {committed > 0n && <span>{fmtUsdc(committed)} signed, not yet settled</span>}
+          {incoming > 0n && <span style={{ color: 'var(--success)' }}>{fmtUsdc(incoming)} incoming</span>}
+        </div>
+      )}
+
+      <div className="mt-5 grid grid-cols-4 gap-2">
+        {actions.map(({ label, icon: Icon, onClick, primary }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl text-xs font-semibold transition-transform active:scale-[0.97]"
+            style={
+              primary
+                ? { background: 'var(--accent)', color: 'white' }
+                : { background: 'var(--surface-muted)', color: 'var(--ink)', border: '1px solid var(--border)' }
+            }
+          >
+            <Icon className="size-5" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
