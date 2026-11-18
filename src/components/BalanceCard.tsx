@@ -1,9 +1,9 @@
-import { ArrowUpRight, ArrowDownLeft, Plus, ScanLine, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, ArrowDownLeft, CreditCard, Plus, ScanLine, ShieldCheck } from 'lucide-react'
 import { TokenUSDC } from '@web3icons/react'
 import { fmtUsdc, timeAgo } from '@/lib/format'
 import { roleOf } from '@/lib/items'
 import { useMeshState } from '@/lib/store'
-import { useMyAddresses, useSpendable } from '@/hooks/useMeshData'
+import { useMyAddresses, useSpendable, useWalletUsdc } from '@/hooks/useMeshData'
 
 interface Actions {
   onSend: () => void
@@ -11,11 +11,14 @@ interface Actions {
   onScan: () => void
   onAdd: () => void
   onLimits: () => void
+  onBuy: () => void
+  canBuy: boolean
 }
 
-export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits }: Actions) {
+export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onBuy, canBuy }: Actions) {
   const { spendable, reserve, committed } = useSpendable()
   const { items } = useMeshState()
+  const wallet = useWalletUsdc()
   const mine = useMyAddresses()
   const incoming = items
     .filter((i) => i.status === 'pending' && roleOf(i, mine) === 'in')
@@ -63,6 +66,13 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits }: Acti
         {sub}
       </p>
 
+      <div className="inner mt-3 flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-xs">
+        <span style={{ color: 'var(--muted)' }}>Wallet, pays online</span>
+        <span className="font-semibold tabular-nums" style={{ color: 'var(--ink)' }}>
+          {wallet === null ? 'Connect to see' : `${fmtUsdc(wallet)} USDC`}
+        </span>
+      </div>
+
       {(committed > 0n || incoming > 0n) && (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
           {committed > 0n && <span>{fmtUsdc(committed)} signed, not yet settled</span>}
@@ -87,6 +97,16 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits }: Acti
           </button>
         ))}
       </div>
+
+      {canBuy && (
+        <button
+          onClick={onBuy}
+          className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl text-xs font-semibold"
+          style={{ color: 'var(--accent-hover)' }}
+        >
+          <CreditCard className="size-4" /> Buy USDC with a bank or card
+        </button>
+      )}
     </section>
   )
 }

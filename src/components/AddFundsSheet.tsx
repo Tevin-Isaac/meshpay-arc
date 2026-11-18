@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { ConnectKitButton } from 'connectkit'
-import { createWalletClient, erc20Abi, http } from 'viem'
+import { createWalletClient, erc20Abi, getAddress, http, isAddress, zeroAddress } from 'viem'
 import { useAccount, usePublicClient, useReadContract, useSwitchChain, useWriteContract } from 'wagmi'
 import { toast } from 'sonner'
+import { ExternalLink, Landmark } from 'lucide-react'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
 import { CHAIN, MESHPAY_ABI, MESHPAY_ADDRESS, USDC_ADDRESS } from '@/lib/mesh'
-import { fmtUsdc } from '@/lib/format'
+import { fmtUsdc, shortAddress } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
 import { useNet } from '@/lib/net'
@@ -13,6 +14,37 @@ import { getDeviceAccount } from '@/lib/store'
 import { useDevice, useDeviceUsdc, useSpendable } from '@/hooks/useMeshData'
 import { useSettle } from '@/hooks/useSettle'
 import { AmountInput, GhostButton, PrimaryButton, Sheet } from './ui'
+
+const OFFRAMP_URL = import.meta.env.VITE_OFFRAMP_URL as string | undefined
+
+/** Turning USDC into bank money needs a licensed provider. The app sends USDC to the deposit address they give you. */
+function BankCashOut() {
+  return (
+    <div className="inner space-y-2 rounded-2xl p-4 text-xs text-pretty" style={{ color: 'var(--ink-2)' }}>
+      <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+        <Landmark className="size-4" /> Cash out to a bank
+      </div>
+      <ol className="list-decimal space-y-1 pl-4">
+        <li>Open your off-ramp or exchange and start a sale of USDC on Arc.</li>
+        <li>Copy the deposit address it shows you.</li>
+        <li>Paste it below, enter the amount, and send.</li>
+      </ol>
+      {OFFRAMP_URL ? (
+        <a
+          href={OFFRAMP_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white font-semibold"
+          style={{ border: '1px solid var(--border)', color: 'var(--ink)' }}
+        >
+          Open off-ramp <ExternalLink className="size-3.5" />
+        </a>
+      ) : (
+        <p style={{ color: 'var(--subtle)' }}>Use any exchange or off-ramp that accepts USDC on Arc. Only send to an address that supports Arc.</p>
+      )}
+    </div>
+  )
+}
 
 type Step = 'approve' | 'deposit' | 'cashout' | null
 
@@ -40,6 +72,7 @@ function AddFundsBody() {
   const { settle } = useSettle()
   const [tab, setTab] = useState<'add' | 'cashout'>('add')
   const [amount, setAmount] = useState('')
+  const [dest, setDest] = useState('')
   const [step, setStep] = useState<Step>(null)
 
   const walletBalance = useReadContract({
@@ -136,13 +169,16 @@ function AddFundsBody() {
 
   const cashOut = async () => {
     if (!address) return
+    if (dest && (!isAddress(dest) || dest.toLowerCase() === zeroAddress)) return toast.error('Enter a valid address, or leave it empty to use your wallet.')
     try {
       const raw = parseUsdc(amount)
+      const target = dest ? getAddress(dest) : address
+      const toSelf = target.toLowerCase() === address.toLowerCase()
       setStep('cashout')
-      const { item } = await createSignedPayment(address, raw, { kind: 'cashout', spendable: spendable })
+      const { item } = await createSignedPayment(target, raw, { kind: toSelf ? 'cashout' : undefined, spendable: spendable })
       const result = await settle([item])
       if (result.settled > 0) {
-        toast.success(`Sent ${fmtUsdc(raw)} USDC to your wallet.`)
+        toast.success(`Sent ${fmtUsdc(raw)} USDC to ${toSelf ? 'your wallet' : shortAddress(target)}.`)
         setAmount('')
         refresh()
       } else {
@@ -185,7 +221,7 @@ function AddFundsBody() {
         <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
           {tab === 'add'
             ? 'Move USDC from your wallet into the balance this phone can spend with no internet. You can only add while online.'
-            : 'Send your offline balance back to your connected wallet. Needs a connection.'}
+            : 'Send your offline balance to your wallet, or to an exchange or off-ramp deposit address to turn it into cash. Needs a connection.'}
         </p>
 
         {!isConnected ? (
@@ -204,8 +240,19 @@ function AddFundsBody() {
               hint={hint}
               onHint={maxValue && maxValue > 0n ? () => setAmount(formatUsdc(maxValue)) : undefined}
             />
+            {tab === 'cashout' && <BankCashOut />}
+            {tab === 'cashout' && (
+              <input
+                value={dest}
+                onChange={(e) => setDest(e.target.value.trim())}
+                placeholder="Send to (optional): 0x… or leave empty for your wallet"
+                spellCheck={false}
+                aria-label="Destination address"
+                className="inner mono min-h-12 w-full rounded-2xl px-4 text-xs outline-none"
+              />
+            )}
             <PrimaryButton onClick={() => void (tab === 'add' ? addFromWallet() : cashOut())} loading={busy} disabled={!amount}>
-              {busy ? stepLabel : tab === 'add' ? 'Add to offline balance' : 'Cash out to wallet'}
+              {busy ? stepLabel : tab === 'add' ? 'Add to offline balance' : dest ? 'Cash out to address' : 'Cash out to wallet'}
             </PrimaryButton>
             {tab === 'add' && walletBalance.data === 0n && (
               <p className="text-center text-xs" style={{ color: 'var(--subtle)' }}>

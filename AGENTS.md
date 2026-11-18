@@ -41,3 +41,10 @@ bun run dev
 - Voucher wire format: `mp1:` + base64url of 138 bytes (see `src/lib/mesh.ts`). Receive request QR: `meshpay:<address>?amount=`.
 - Device key lives in localStorage (`meshpay.v1`). Demo grade; a native app would use secure hardware.
 - Offline shell: `public/sw.js` (network first, cache fallback). Bluetooth handoff is not possible from a web page, so QR and the share sheet are used.
+
+## Onramp / payments
+
+- Pay now: `src/components/SendSheet.tsx` sends USDC from the connected wallet (plain ERC-20 transfer). Recorded locally as `kind: 'online'`.
+- Buy USDC: Circle App Kit onramp in sandbox (`api-test.circle.com`, `onramp-sandbox.arc.io`). Backend `scripts/onramp-server.ts` (`bun run server`, port 3001, proxied at `/api` by Vite) mints sessions only after the wallet signs `onrampAuthMessage`. Sandbox test funds land on Ethereum, not Arc.
+- Offramp: Circle has no self-serve hosted offramp widget for apps. Cash out sends USDC to the wallet or any address (exchange/off-ramp deposit address). A bank payout needs a licensed provider partnership.
+- Production onramp needs a mainnet API key, KYB, and `ONRAMP_REFERRER_DOMAIN` set to the KYB domain.

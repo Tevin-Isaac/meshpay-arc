@@ -24,6 +24,9 @@ export default defineConfig({
       'viem',
       'viem/chains',
       'connectkit',
+      '@circle-fin/app-kit',
+      'qrcode',
+      'jsqr',
       'framer-motion',
       'lucide-react',
       'sonner',
@@ -37,5 +40,12 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     cors: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })

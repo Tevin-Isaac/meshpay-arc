@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import { Loader2, X } from 'lucide-react'
 
 export function Sheet({
@@ -13,6 +13,7 @@ export function Sheet({
   title: string
   children: ReactNode
 }) {
+  const controls = useDragControls()
   return (
     <AnimatePresence>
       {open && (
@@ -37,11 +38,19 @@ export function Sheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 340 }}
+            drag="y"
+            dragControls={controls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 110 || info.velocity.y > 600) onClose()
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="h-1" style={{ background: 'var(--spectral)' }} />
-            <div className="flex justify-center pt-3">
-              <div className="h-1 w-10 rounded-full bg-black/10" />
+            <div className="flex cursor-grab touch-none justify-center pb-1 pt-3" onPointerDown={(e) => controls.start(e)} aria-hidden="true">
+              <div className="h-1.5 w-12 rounded-full bg-black/15" />
             </div>
             <div className="flex items-center justify-between px-5 pt-2">
               <h2 className="display text-xl font-bold" style={{ color: 'var(--ink)' }}>
@@ -56,7 +65,7 @@ export function Sheet({
                 <X className="size-5" />
               </button>
             </div>
-            <div className="px-5 pb-8 pt-2">{children}</div>
+            <div className="px-5 pb-20 pt-2">{children}</div>
           </motion.section>
         </motion.div>
       )}

@@ -8,7 +8,7 @@ import { Chip } from './ui'
 
 function StatusChip({ item, check }: { item: StoredItem; check?: number }) {
   if (item.status === 'settled') return <Chip tone="good">Settled</Chip>
-  if (item.status === 'duplicate') return <Chip>Duplicate</Chip>
+  if (item.status === 'duplicate') return <Chip>Already settled</Chip>
   if (item.status === 'expired') return <Chip tone="bad">Expired</Chip>
   if (item.status === 'invalid') return <Chip tone="bad">Invalid</Chip>
   if (check === 0) return <Chip tone="good">Funded</Chip>

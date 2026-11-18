@@ -28,7 +28,7 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
     <>
       <div className="space-y-4">
         <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-          Show this code to the payer. Then scan the signed payment they hand back. No internet needed on either phone.
+          Show this code to the payer. If they are online they can pay you instantly. If not, they sign offline and you scan the payment they hand back.
         </p>
 
         {wallet && (

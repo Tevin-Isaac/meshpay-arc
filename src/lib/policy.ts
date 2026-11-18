@@ -13,7 +13,7 @@ function safeParse(value: string): bigint {
 
 export function spentToday(items: StoredItem[], now = Date.now()): bigint {
   return items
-    .filter((i) => i.source === 'signed' && i.kind !== 'cashout' && now - i.createdAt < DAY_MS)
+    .filter((i) => i.source === 'signed' && !i.kind && now - i.createdAt < DAY_MS)
     .reduce((sum, i) => sum + BigInt(i.amount), 0n)
 }
 

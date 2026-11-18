@@ -106,6 +106,22 @@ body {
   color: var(--accent-hover);
 }
 
+@media (max-width: 640px) {
+  input:not(.display) {
+    font-size: 16px;
+  }
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {

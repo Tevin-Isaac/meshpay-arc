@@ -8,8 +8,8 @@ export interface StoredItem {
   id: string
   /** `signed` was created on this device; `received` arrived by QR or pasted code. */
   source: 'signed' | 'received'
-  /** A payment from the device reserve to the user's own wallet. Not counted against spending limits. */
-  kind?: 'cashout'
+  /** `cashout`: reserve to the user's own wallet. `online`: paid straight from the wallet. Neither counts against device limits. */
+  kind?: 'cashout' | 'online'
   from: Address
   to: Address
   amount: string

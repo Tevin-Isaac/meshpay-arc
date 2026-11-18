@@ -56,6 +56,21 @@ export function useSpendable() {
   return { reserve, committed, spendable }
 }
 
+/** USDC in the connected wallet, for paying online. Null when no wallet is connected. */
+export function useWalletUsdc() {
+  const { address } = useAccount()
+  const { online } = useNet()
+  const q = useReadContract({
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: CHAIN.id,
+    query: { enabled: !!address && online, refetchInterval: 8000 },
+  })
+  return address && q.data !== undefined ? q.data : null
+}
+
 /** USDC received straight to the device address (the same pool that pays its network fees). */
 export function useDeviceUsdc() {
   const device = useDevice()
@@ -113,4 +128,26 @@ export function useChecks(items: StoredItem[]) {
   }, [q.data])
 
   return q.data ?? {}
+}
+
+/** The Buy USDC backend only runs next to the dev server. Hide Buy when it is not reachable. */
+export function useOnrampAvailable() {
+  const { online } = useNet()
+  const q = useQuery({
+    queryKey: ['onramp-health'],
+    enabled: online,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/health')
+        if (!res.ok) return false
+        const body = (await res.json()) as { ok?: boolean }
+        return body.ok === true
+      } catch {
+        return false
+      }
+    },
+  })
+  return q.data === true
 }
