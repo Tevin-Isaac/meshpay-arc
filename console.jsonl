@@ -55,3 +55,113 @@
 {"level":"debug","message":"[vite] hot updated: /src/components/Header.tsx","timestamp":1792924687797}
 {"level":"debug","message":"[vite] hot updated: /src/components/SettleCard.tsx","timestamp":1792924687798}
 {"level":"debug","message":"[vite] hot updated: /src/components/ItemRow.tsx","timestamp":1792924687798}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792924735510}
+{"level":"debug","message":"[vite] hot updated: /src/components/Header.tsx","timestamp":1792924766060}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792924766061}
+{"level":"debug","message":"[vite] hot updated: /src/components/HowItWorks.tsx","timestamp":1792924784992}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792924784993}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792924802511}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792924802511}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794925730873}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1794925759742}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925759742}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1794925759777}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925759777}
+{"level":"debug","message":"[vite] hot updated: /src/components/Header.tsx","timestamp":1794925760452}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925760452}
+{"level":"debug","message":"[vite] hot updated: /src/components/Header.tsx","timestamp":1794925760761}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925760761}
+{"level":"debug","message":"(previous line repeated 1× more)","timestamp":1794925761232}
+{"level":"debug","message":"[vite] hot updated: /src/components/SettleCard.tsx","timestamp":1794925761232}
+{"level":"debug","message":"[vite] hot updated: /src/components/GetStarted.tsx","timestamp":1794925761232}
+{"level":"debug","message":"[vite] hot updated: /src/components/BalanceCard.tsx","timestamp":1794925761232}
+{"level":"debug","message":"[vite] hot updated: /src/components/LimitsSheet.tsx","timestamp":1794925761232}
+{"level":"debug","message":"[vite] hot updated: /src/components/AddFundsSheet.tsx","timestamp":1794925761232}
+{"level":"debug","message":"[vite] hot updated: /src/components/ReceiveSheet.tsx","timestamp":1794925761233}
+{"level":"debug","message":"[vite] hot updated: /src/components/ActivityList.tsx","timestamp":1794925761233}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendSheet.tsx","timestamp":1794925761233}
+{"level":"debug","message":"(previous line repeated 1× more)","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/SettleCard.tsx","timestamp":1794925761326}
+{"level":"debug","message":"[vite] hot updated: /src/components/GetStarted.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/BalanceCard.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/LimitsSheet.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/AddFundsSheet.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/ReceiveSheet.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/ActivityList.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendSheet.tsx","timestamp":1794925761327}
+{"level":"debug","message":"[vite] hot updated: /src/components/BalanceCard.tsx","timestamp":1794925761950}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925761950}
+{"level":"debug","message":"[vite] hot updated: /src/components/BalanceCard.tsx","timestamp":1794925762091}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925762091}
+{"level":"debug","message":"[vite] hot updated: /src/components/ReceiveSheet.tsx","timestamp":1794925763037}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925763037}
+{"level":"debug","message":"[vite] hot updated: /src/components/ReceiveSheet.tsx","timestamp":1794925763054}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794925763054}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794925946389}
+{"level":"debug","message":"[vite] hot updated: /src/components/BuySheet.tsx","timestamp":1794926011222}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794926011223}
+{"level":"debug","message":"[vite] hot updated: /src/components/BuySheet.tsx","timestamp":1794926011379}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794926011379}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendSheet.tsx","timestamp":1794926012618}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794926012618}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendSheet.tsx","timestamp":1794926012623}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794926012623}
+{"level":"debug","message":"[vite] hot updated: /src/components/AddFundsSheet.tsx","timestamp":1794926013645}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794926013645}
+{"level":"debug","message":"[vite] hot updated: /src/components/AddFundsSheet.tsx","timestamp":1794926013652}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794926013652}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794926040837}
+{"level":"debug","message":"[vite] connected.","timestamp":1794926046134}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794929255546}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794929329031}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794929455576}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794929558092}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794930552775}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794930619748}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794931135470}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794931209208}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794931425497}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794931581445}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794931765769}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794933141271}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794934035689}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794934103485}
+{"level":"debug","message":"[vite] hot updated: /src/components/ItemRow.tsx","timestamp":1794934302699}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794934302699}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794934621096}
+{"level":"debug","message":"[vite] connected.","timestamp":1794934629079}
+{"level":"debug","message":"[vite] connected.","timestamp":1794934629352}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794934687992}
+{"level":"debug","message":"[vite] connected.","timestamp":1794934692578}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794935792414}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794936004332}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1794936019189}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794936019189}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794936327713}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794936638393}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794936986169}
+{"level":"debug","message":"[vite] hot updated: /src/components/ui.tsx","timestamp":1794937029194}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794937029194}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794937040379}
+{"level":"debug","message":"[vite] hot updated: /src/components/BalanceCard.tsx","timestamp":1794937040379}
+{"level":"debug","message":"[vite] hot updated: /src/components/GetStarted.tsx","timestamp":1794937040380}
+{"level":"debug","message":"[vite] hot updated: /src/components/ActivityList.tsx","timestamp":1794937040380}
+{"level":"debug","message":"[vite] hot updated: /src/components/SettleCard.tsx","timestamp":1794937040380}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendSheet.tsx","timestamp":1794937040381}
+{"level":"debug","message":"[vite] hot updated: /src/components/ReceiveSheet.tsx","timestamp":1794937040381}
+{"level":"debug","message":"[vite] hot updated: /src/components/AddFundsSheet.tsx","timestamp":1794937040381}
+{"level":"debug","message":"[vite] hot updated: /src/components/LimitsSheet.tsx","timestamp":1794937040382}
+{"level":"debug","message":"[vite] hot updated: /src/components/BalanceCard.tsx","timestamp":1794937041167}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794937041167}
+{"level":"debug","message":"[vite] hot updated: /src/components/WalletApp.tsx","timestamp":1794937041995}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794937041995}
+{"level":"debug","message":"[vite] hot updated: /src/components/Header.tsx","timestamp":1794937068750}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1794937068750}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794937224627}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794937779629}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794992339497}
+{"level":"debug","message":"[vite] connected.","timestamp":1794992344649}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794992984698}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794993185499}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794993423579}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1794993535089}
