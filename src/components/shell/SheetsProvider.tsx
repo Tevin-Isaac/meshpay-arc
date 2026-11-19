@@ -5,6 +5,7 @@ import { ReceiveSheet } from '../ReceiveSheet'
 import { ScanSheet } from '../ScanSheet'
 import { AddFundsSheet } from '../AddFundsSheet'
 import { BuySheet } from '../BuySheet'
+import { MpesaSheet } from '../MpesaSheet'
 import { LimitsSheet } from '../LimitsSheet'
 import { SecuritySheet } from '../SecuritySheet'
 import { AgentSheet } from '../AgentSheet'
@@ -45,6 +46,7 @@ export function SheetsProvider({ children, onTab }: { children: ReactNode; onTab
       />
       <AddFundsSheet open={sheet === 'add'} onClose={close} />
       <BuySheet open={sheet === 'buy'} onClose={close} />
+      <MpesaSheet open={sheet === 'mpesa'} onClose={close} />
       <LimitsSheet open={sheet === 'limits'} onClose={close} />
       <SecuritySheet open={sheet === 'security'} onClose={close} />
       <AgentSheet open={sheet === 'agent'} onClose={close} />

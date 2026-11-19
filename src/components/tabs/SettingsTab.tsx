@@ -1,6 +1,8 @@
+import { IS_MAINNET } from '@/lib/network'
+import { useRampConfig } from '@/lib/ramp'
 import { type ComponentType, type ReactNode } from 'react'
 import { useAccount } from 'wagmi'
-import { ChevronRight, Copy, ExternalLink, Gauge, HandCoins, Bot, ShieldCheck, CreditCard } from 'lucide-react'
+import { ChevronRight, Copy, ExternalLink, Gauge, HandCoins, Bot, ShieldCheck, CreditCard, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { buildAddressExplorerUrl } from '@/onchain-facts'
 import { CHAIN, MESHPAY_ADDRESS } from '@/lib/mesh'
@@ -50,6 +52,7 @@ export function SettingsTab() {
   const { isConnected, address: wallet } = useAccount()
   const sheets = useSheets()
   const canBuy = useOnrampAvailable()
+  const ramp = useRampConfig()
   const open = (n: Exclude<SheetName, null>) => () => sheets.open(n)
 
   return (
@@ -92,7 +95,8 @@ export function SettingsTab() {
 
       <Group title="Money">
         <Row icon={HandCoins} title="Add funds or cash out" hint="Top up the offline balance, or send it to a wallet or exchange" onClick={open('add')} />
-        {canBuy && <Row icon={CreditCard} title="Buy USDC" hint="Card or bank transfer (sandbox)" onClick={open('buy')} />}
+        {ramp && <Row icon={Smartphone} title="M-Pesa" hint={ramp.mock ? 'Add money or cash out (sandbox)' : 'Add money or cash out'} onClick={open('mpesa')} />}
+        {canBuy && <Row icon={CreditCard} title="Buy USDC" hint={IS_MAINNET ? 'Card or bank transfer' : 'Card or bank transfer (sandbox)'} onClick={open('buy')} />}
         <Row icon={Bot} title="Autopilot" hint={standing.length ? `${standing.filter((s) => s.active).length} standing payments running` : 'Recurring payments that sign offline'} onClick={open('agent')} />
       </Group>
 
@@ -102,7 +106,7 @@ export function SettingsTab() {
         <div className="font-semibold" style={{ color: 'var(--ink)' }}>
           About
         </div>
-        <p>WayaMesh web wallet · Arc Testnet · test USDC only.</p>
+        <p>{IS_MAINNET ? 'WayaMesh web wallet · Arc mainnet · beta, keep small amounts.' : 'WayaMesh web wallet · Arc Testnet · test USDC only.'}</p>
         <a
           href={buildAddressExplorerUrl(CHAIN.id, MESHPAY_ADDRESS)}
           target="_blank"

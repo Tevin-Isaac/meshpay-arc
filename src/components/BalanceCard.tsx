@@ -1,4 +1,4 @@
-import { ArrowUpRight, ArrowDownLeft, CreditCard, Gauge, Plus, ScanLine, ShieldCheck } from 'lucide-react'
+import { Smartphone, ArrowUpRight, ArrowDownLeft, CreditCard, Gauge, Plus, ScanLine, ShieldCheck } from 'lucide-react'
 import { TokenUSDC } from '@web3icons/react'
 import { fmtUsdc, timeAgo } from '@/lib/format'
 import { roleOf } from '@/lib/items'
@@ -14,9 +14,10 @@ interface Actions {
   onSecurity: () => void
   onBuy: () => void
   canBuy: boolean
+  onMpesa?: () => void
 }
 
-export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecurity, onBuy, canBuy }: Actions) {
+export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecurity, onBuy, canBuy, onMpesa }: Actions) {
   const { spendable, reserve, committed } = useSpendable()
   const { items, settings, status } = useMeshState()
   const hide = settings.hideBalances ? 'select-none blur-md' : ''
@@ -105,6 +106,15 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecu
         ))}
       </div>
 
+      {onMpesa && (
+        <button
+          onClick={onMpesa}
+          className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl text-xs font-semibold"
+          style={{ color: 'var(--accent-hover)' }}
+        >
+          <Smartphone className="size-4" /> Add money or cash out with M-Pesa
+        </button>
+      )}
       {canBuy && (
         <button
           onClick={onBuy}

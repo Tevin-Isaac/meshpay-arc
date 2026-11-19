@@ -11,18 +11,19 @@ import {
   type Hex,
 } from 'viem'
 import type { privateKeyToAccount } from 'viem/accounts'
-import { arcTestnet } from 'viem/chains'
 import { getUsdc } from '@/onchain-facts'
+import { CHAIN } from './network'
+import { ENV } from './env'
 
-export const CHAIN = arcTestnet
-export const MESHPAY_ADDRESS = import.meta.env.VITE_MESHPAY_ADDRESS as Address
+export { CHAIN }
+export const MESHPAY_ADDRESS = ENV.VITE_MESHPAY_ADDRESS as Address
 export const USDC_ADDRESS = (getUsdc(CHAIN.id)?.address ?? '0x3600000000000000000000000000000000000000') as Address
 
 /**
  * Contract-enforced delay before a reserve withdrawal can finish. Payments must not outlive it,
  * otherwise a payer could sign, hand over and withdraw before the payment settles.
  */
-export const WITHDRAW_DELAY_SECONDS = Number(import.meta.env.VITE_MESHPAY_DELAY ?? 86400)
+export const WITHDRAW_DELAY_SECONDS = Number(ENV.VITE_MESHPAY_DELAY ?? 86400)
 
 /** Offline payments are valid for 24 hours, never longer than the contract's withdrawal delay. */
 export const VOUCHER_TTL_SECONDS = Math.min(24 * 60 * 60, WITHDRAW_DELAY_SECONDS)

@@ -1,3 +1,4 @@
+import { IS_MAINNET } from '@/lib/network'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Eye, KeyRound, ShieldCheck } from 'lucide-react'
@@ -61,7 +62,7 @@ export function Onboarding() {
           I already have a recovery phrase
         </GhostButton>
         <p className="text-[11px]" style={{ color: 'var(--subtle)' }}>
-          Arc Testnet. Test USDC only.
+          {IS_MAINNET ? 'Arc mainnet. Real USDC. Beta: keep only small amounts here.' : 'Arc Testnet. Test USDC only.'}
         </p>
       </AuthShell>
     )

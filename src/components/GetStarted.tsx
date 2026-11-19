@@ -1,3 +1,4 @@
+import { IS_MAINNET } from '@/lib/network'
 import { ConnectKitButton } from 'connectkit'
 import { Check } from 'lucide-react'
 import { useAccount } from 'wagmi'
@@ -12,7 +13,7 @@ export function GetStarted({ onAdd, onSend }: { onAdd: () => void; onSend: () =>
 
   const steps = [
     { title: 'Connect your wallet', hint: 'Needed to add funds and pay the network fee.', done: isConnected },
-    { title: 'Add USDC to your offline balance', hint: 'Use Get test USDC in the sidebar first.', done: (reserve.raw ?? 0n) > 0n },
+    { title: 'Add USDC to your offline balance', hint: IS_MAINNET ? 'Send USDC to this device, or buy it with M-Pesa or a card.' : 'Use Get test USDC in the sidebar first.', done: (reserve.raw ?? 0n) > 0n },
     { title: 'Sign a payment', hint: 'Try airplane mode, then Send.', done: items.some((i) => i.source === 'signed') },
     { title: 'Settle it on Arc', hint: 'Back online? Press Settle on Arc.', done: items.some((i) => i.status === 'settled') },
   ]

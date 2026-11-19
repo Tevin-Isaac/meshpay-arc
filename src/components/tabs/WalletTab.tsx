@@ -1,3 +1,4 @@
+import { useRampConfig } from '@/lib/ramp'
 import { ChevronRight } from 'lucide-react'
 import { roleOf } from '@/lib/items'
 import { useMeshState } from '@/lib/store'
@@ -13,6 +14,7 @@ export function WalletTab() {
   const sheets = useSheets()
   const mine = useMyAddresses()
   const canBuy = useOnrampAvailable()
+  const ramp = useRampConfig()
   const recent = items.filter((i) => i.status !== 'pending').slice(0, 3)
 
   return (
@@ -26,6 +28,7 @@ export function WalletTab() {
         onSecurity={() => sheets.open('security')}
         onBuy={() => sheets.open('buy')}
         canBuy={canBuy}
+        onMpesa={ramp ? () => sheets.open('mpesa') : undefined}
       />
       <GetStarted onAdd={() => sheets.open('add')} onSend={() => sheets.open('send')} />
       <SettleCard items={items} onShowCode={sheets.showCode} />

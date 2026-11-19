@@ -9,3 +9,7 @@ contracts/out
 contracts/cache
 console.jsonl
 traces.jsonl
+ramp-server/.env
+ramp-server/data/
+ramp-server/node_modules/
+/package-lock.json
