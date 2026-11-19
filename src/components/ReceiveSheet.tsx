@@ -21,7 +21,7 @@ export function ReceiveSheet({ open, onClose, onScan }: { open: boolean; onClose
 function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => void }) {
   const device = useDevice()
   const { address: wallet } = useAccount()
-  const { invoices } = useMeshState()
+  const { invoices, settings } = useMeshState()
   const [tab, setTab] = useState<'pay' | 'card'>('pay')
   const [target, setTarget] = useState<'device' | 'wallet'>('device')
   const [amount, setAmount] = useState('')
@@ -60,7 +60,7 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
           <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
             Share this once with someone you trust. It lets them send you end-to-end encrypted messages and payments, online or off.
           </p>
-          <CodeShare code={encodeCard({ address: device.address, pubkey: myPubkey(), name: '' })} label="Contact card QR code" />
+          <CodeShare code={encodeCard({ address: device.address, pubkey: myPubkey(), name: settings.displayName })} label="Contact card QR code" />
           <p className="mono text-center text-xs" style={{ color: 'var(--subtle)' }}>
             {shortAddress(device.address)}
           </p>

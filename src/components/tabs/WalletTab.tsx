@@ -5,6 +5,7 @@ import { useMeshState } from '@/lib/store'
 import { useMyAddresses, useOnrampAvailable } from '@/hooks/useMeshData'
 import { BalanceCard } from '../BalanceCard'
 import { GetStarted } from '../GetStarted'
+import { FaucetCard } from '../FaucetCard'
 import { SettleCard } from '../SettleCard'
 import { ItemRow } from '../ItemRow'
 import { useSheets } from '../shell/useSheets'
@@ -30,6 +31,7 @@ export function WalletTab() {
         canBuy={canBuy}
         onMpesa={ramp ? () => sheets.open('mpesa') : undefined}
       />
+      <FaucetCard />
       <GetStarted onAdd={() => sheets.open('add')} onSend={() => sheets.open('send')} />
       <SettleCard items={items} onShowCode={sheets.showCode} />
       <section className="glass rounded-3xl p-5">

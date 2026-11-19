@@ -63,7 +63,7 @@ export function AppShell() {
   return (
     <SheetsProvider onTab={goTab}>
       <div className="page-glow relative isolate min-h-dvh">
-        <main className="mx-auto w-full max-w-md space-y-3 px-4 pb-48 pt-[max(env(safe-area-inset-top),16px)]">
+        <main className="mx-auto w-full max-w-md space-y-3 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[max(env(safe-area-inset-top),16px)]">
           <Header />
           <ErrorBoundary key={tab} area="This tab">
             {tab === 'wallet' && <WalletTab />}
@@ -75,9 +75,9 @@ export function AppShell() {
         </main>
         <nav
           aria-label="Main"
-          className="fixed inset-x-0 bottom-[58px] z-40 mx-auto max-w-md px-3"
+          className="app-nav"
         >
-          <ul className="glass grid grid-cols-5 gap-1 rounded-3xl p-1.5" style={{ background: 'var(--nav-bg)' }}>
+          <ul className="app-nav-bar grid grid-cols-5 gap-1 rounded-3xl p-1.5">
             {TABS.map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (

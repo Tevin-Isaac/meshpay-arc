@@ -19,7 +19,7 @@ export function ContactSheet({ open, onClose }: { open: boolean; onClose: () => 
 }
 
 function ContactBody({ onClose }: { onClose: () => void }) {
-  const { address } = useMeshState()
+  const { address, settings } = useMeshState()
   const [text, setText] = useState('')
   const [card, setCard] = useState<ContactCard | null>(null)
 
@@ -40,7 +40,7 @@ function ContactBody({ onClose }: { onClose: () => void }) {
       <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
         Share your card once with someone you trust. It lets you message and pay each other, end-to-end encrypted, online or off.
       </p>
-      <CodeShare code={encodeCard(myCard(''))} label="Your contact card" />
+      <CodeShare code={encodeCard(myCard(settings.displayName))} label="Your contact card" />
       <p className="mono text-center text-xs" style={{ color: 'var(--subtle)' }}>
         {shortAddress(address)}
       </p>

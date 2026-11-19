@@ -1,21 +1,25 @@
-import { IS_MAINNET } from '@/lib/network'
-import { ConnectKitButton } from 'connectkit'
+import { IS_MAINNET, NETWORK_LABEL } from '@/lib/network'
 import { Check } from 'lucide-react'
-import { useAccount } from 'wagmi'
 import { useMeshState } from '@/lib/store'
-import { useReserve } from '@/hooks/useMeshData'
+import { toast } from 'sonner'
+import { useDevice, useDeviceUsdc, useReserve } from '@/hooks/useMeshData'
 
 /** First-run checklist driven by real state: wallet, reserve, a signed payment, a settled payment. */
 export function GetStarted({ onAdd, onSend }: { onAdd: () => void; onSend: () => void }) {
-  const { isConnected } = useAccount()
+  const device = useDevice()
   const { items } = useMeshState()
   const reserve = useReserve()
+  const deviceUsdc = useDeviceUsdc()
 
   const steps = [
-    { title: 'Connect your wallet', hint: 'Needed to add funds and pay the network fee.', done: isConnected },
-    { title: 'Add USDC to your offline balance', hint: IS_MAINNET ? 'Send USDC to this device, or buy it with M-Pesa or a card.' : 'Use Get test USDC in the sidebar first.', done: (reserve.raw ?? 0n) > 0n },
-    { title: 'Sign a payment', hint: 'Try airplane mode, then Send.', done: items.some((i) => i.source === 'signed') },
-    { title: 'Settle it on Arc', hint: 'Back online? Press Settle on Arc.', done: items.some((i) => i.status === 'settled') },
+    {
+      title: IS_MAINNET ? 'Add USDC' : 'Get test USDC',
+      hint: IS_MAINNET ? 'Send USDC to your wallet address, or buy it with M-Pesa or a card.' : `Copy your address and request free test USDC at the faucet (${NETWORK_LABEL}).`,
+      done: deviceUsdc.known !== null && deviceUsdc.known > 0n ? true : (reserve.raw ?? 0n) > 0n,
+    },
+    { title: 'Add to your offline reserve', hint: 'Move some USDC into the reserve so you can pay with no internet.', done: (reserve.raw ?? 0n) > 0n },
+    { title: 'Sign a payment', hint: 'Open Send and choose Sign offline.', done: items.some((i) => i.source === 'signed' && i.kind !== 'online') },
+    { title: 'Settle it on Arc', hint: 'Back online? Press Settle on Arc.', done: items.some((i) => i.status === 'settled' && i.kind !== 'online') },
   ]
   const current = steps.findIndex((s) => !s.done)
   if (current === -1) return null
@@ -56,16 +60,16 @@ export function GetStarted({ onAdd, onSend }: { onAdd: () => void; onSend: () =>
             {i === current && (
               <div className="shrink-0">
                 {i === 0 ? (
-                  <ConnectKitButton.Custom>
-                    {({ show }) => (
-                      <button onClick={show} className="min-h-11 rounded-full px-4 text-xs font-semibold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>
-                        Connect
-                      </button>
-                    )}
-                  </ConnectKitButton.Custom>
+                  <button
+                    onClick={() => void navigator.clipboard.writeText(device.address).then(() => toast.success(IS_MAINNET ? 'Address copied.' : 'Address copied. Paste it at the faucet.'), () => toast.error('Could not copy. Open Receive to see your address.'))}
+                    className="min-h-11 rounded-full px-4 text-xs font-semibold"
+                    style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
+                  >
+                    Copy address
+                  </button>
                 ) : i === 1 ? (
                   <button onClick={onAdd} className="min-h-11 rounded-full px-4 text-xs font-semibold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>
-                    Add funds
+                    Add
                   </button>
                 ) : i === 2 ? (
                   <button onClick={onSend} className="min-h-11 rounded-full px-4 text-xs font-semibold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>

@@ -103,7 +103,7 @@ body {
   min-height: 100dvh;
   color: var(--ink);
   background: var(--bg-gradient);
-  background-attachment: fixed;
+  overscroll-behavior-y: none;
 }
 
 .display {
@@ -142,7 +142,6 @@ body {
   position: fixed;
   z-index: -1;
   border-radius: 50%;
-  filter: blur(70px);
   pointer-events: none;
 }
 .page-glow::before {
@@ -196,6 +195,35 @@ a {
 html {
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
+  background: var(--bg);
+}
+
+/*
+ * Bottom tab bar. Pinned to the bottom of the viewport, with no transform or filter on any ancestor (those make
+ * a fixed child scroll with its parent). Only the bar itself is promoted to its own layer.
+ */
+.app-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px calc(8px + env(safe-area-inset-bottom));
+  pointer-events: none;
+  contain: layout;
+}
+.app-nav-bar {
+  width: 100%;
+  max-width: 28rem;
+  pointer-events: auto;
+  background: var(--nav-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  transform: translateZ(0);
 }
 
 button:focus-visible,
