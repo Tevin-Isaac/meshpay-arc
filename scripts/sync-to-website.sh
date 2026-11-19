@@ -20,7 +20,7 @@ export VITE_MESHPAY_ADDRESS="${VITE_MESHPAY_ADDRESS:-0xd619b77bb8389a632800c3009
 # WalletConnect / Reown project id (public by design: it ships inside every app that uses WalletConnect).
 # It lets phone wallet apps connect through the optional "External wallet" feature in Settings.
 # Override with your own Wayamesh project from cloud.reown.com; remember to add wayamesh.xyz to its domain allowlist.
-export VITE_WALLETCONNECT_PROJECT_ID="${VITE_WALLETCONNECT_PROJECT_ID:-d67d9c8e54efc7222feed4178262bda0}"
+export VITE_WALLETCONNECT_PROJECT_ID="${VITE_WALLETCONNECT_PROJECT_ID:-135eabf3b6763fbeb25a200a27506f67}"
 
 npx --yes vite build
 
