@@ -34,9 +34,9 @@ export function GetStarted({ onAdd, onSend }: { onAdd: () => void; onSend: () =>
               className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
               style={
                 s.done
-                  ? { background: 'var(--success)', color: 'white' }
+                  ? { background: 'var(--success)', color: 'var(--on-accent)' }
                   : i === current
-                    ? { background: 'var(--accent)', color: 'white' }
+                    ? { background: 'var(--accent)', color: 'var(--on-accent)' }
                     : { background: 'var(--surface-muted)', color: 'var(--subtle)' }
               }
             >
@@ -57,17 +57,17 @@ export function GetStarted({ onAdd, onSend }: { onAdd: () => void; onSend: () =>
                 {i === 0 ? (
                   <ConnectKitButton.Custom>
                     {({ show }) => (
-                      <button onClick={show} className="min-h-11 rounded-full px-4 text-xs font-semibold text-white" style={{ background: 'var(--accent)' }}>
+                      <button onClick={show} className="min-h-11 rounded-full px-4 text-xs font-semibold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>
                         Connect
                       </button>
                     )}
                   </ConnectKitButton.Custom>
                 ) : i === 1 ? (
-                  <button onClick={onAdd} className="min-h-11 rounded-full px-4 text-xs font-semibold text-white" style={{ background: 'var(--accent)' }}>
+                  <button onClick={onAdd} className="min-h-11 rounded-full px-4 text-xs font-semibold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>
                     Add funds
                   </button>
                 ) : i === 2 ? (
-                  <button onClick={onSend} className="min-h-11 rounded-full px-4 text-xs font-semibold text-white" style={{ background: 'var(--accent)' }}>
+                  <button onClick={onSend} className="min-h-11 rounded-full px-4 text-xs font-semibold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>
                     Send
                   </button>
                 ) : null}

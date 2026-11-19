@@ -10,7 +10,7 @@ import {
   type Address,
   type Hex,
 } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import type { privateKeyToAccount } from 'viem/accounts'
 import { arcTestnet } from 'viem/chains'
 import { getUsdc } from '@/onchain-facts'
 
@@ -18,17 +18,29 @@ export const CHAIN = arcTestnet
 export const MESHPAY_ADDRESS = import.meta.env.VITE_MESHPAY_ADDRESS as Address
 export const USDC_ADDRESS = (getUsdc(CHAIN.id)?.address ?? '0x3600000000000000000000000000000000000000') as Address
 
-/** Offline payments stay valid for 7 days so a courier has time to reach a connection. */
-export const VOUCHER_TTL_SECONDS = 7 * 24 * 60 * 60
+/**
+ * Contract-enforced delay before a reserve withdrawal can finish. Payments must not outlive it,
+ * otherwise a payer could sign, hand over and withdraw before the payment settles.
+ */
+export const WITHDRAW_DELAY_SECONDS = Number(import.meta.env.VITE_MESHPAY_DELAY ?? 86400)
+
+/** Offline payments are valid for 24 hours, never longer than the contract's withdrawal delay. */
+export const VOUCHER_TTL_SECONDS = Math.min(24 * 60 * 60, WITHDRAW_DELAY_SECONDS)
+
+/** A receiver refuses payments that stay valid longer than the withdrawal delay (plus a small clock allowance). */
+export const MAX_ACCEPTED_TTL_SECONDS = WITHDRAW_DELAY_SECONDS + 3600
+
+export const ZERO_REF: Hex = `0x${'00'.repeat(32)}`
 
 export const MESHPAY_ABI = parseAbi([
-  'struct Payment { address from; address to; uint256 amount; uint256 nonce; uint256 deadline; }',
+  'struct Payment { address from; address to; uint256 amount; uint256 fee; uint256 nonce; uint256 deadline; bytes32 ref; }',
   'function deposit(address account, uint256 amount)',
   'function reserve(address) view returns (uint256)',
   'function check(Payment p, bytes signature) view returns (uint8)',
   'function settle(Payment p, bytes signature)',
   'function settleBatch(Payment[] ps, bytes[] sigs) returns (uint8[])',
-  'event Settled(address indexed from, address indexed to, uint256 nonce, uint256 amount, address relayer)',
+  'function WITHDRAW_DELAY() view returns (uint256)',
+  'event Settled(address indexed from, address indexed to, bytes32 indexed ref, uint256 nonce, uint256 amount, uint256 fee, address relayer)',
   'event Rejected(address indexed from, uint256 nonce, uint8 code)',
 ])
 
@@ -36,8 +48,12 @@ export interface Payment {
   from: Address
   to: Address
   amount: bigint
+  /** Courier tip, paid from the payer's reserve to whoever settles the payment. */
+  fee: bigint
   nonce: bigint
   deadline: bigint
+  /** Invoice or chat reference. All zeros when unused. */
+  ref: Hex
 }
 
 export interface Voucher {
@@ -47,7 +63,7 @@ export interface Voucher {
 
 const DOMAIN = {
   name: 'MeshPay',
-  version: '1',
+  version: '2',
   chainId: CHAIN.id,
   verifyingContract: MESHPAY_ADDRESS,
 } as const
@@ -57,8 +73,10 @@ const TYPES = {
     { name: 'from', type: 'address' },
     { name: 'to', type: 'address' },
     { name: 'amount', type: 'uint256' },
+    { name: 'fee', type: 'uint256' },
     { name: 'nonce', type: 'uint256' },
     { name: 'deadline', type: 'uint256' },
+    { name: 'ref', type: 'bytes32' },
   ],
 } as const
 
@@ -69,8 +87,8 @@ export function randomNonce(): bigint {
 }
 
 /** Signs entirely on the device. No network access is involved. */
-export async function signPayment(privateKey: Hex, payment: Payment): Promise<Hex> {
-  return privateKeyToAccount(privateKey).signTypedData({
+export async function signPayment(account: Pick<ReturnType<typeof privateKeyToAccount>, 'signTypedData'>, payment: Payment): Promise<Hex> {
+  return account.signTypedData({
     domain: DOMAIN,
     types: TYPES,
     primaryType: 'Payment',
@@ -97,16 +115,23 @@ export async function isSignatureValid(v: Voucher): Promise<boolean> {
   }
 }
 
+export function randomRef(): Hex {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return bytesToHex(bytes)
+}
+
 export function voucherId(p: Pick<Payment, 'from' | 'nonce'>): string {
   return `${p.from.toLowerCase()}:${p.nonce.toString()}`
 }
 
-// ---- compact wire format: 138 bytes, base64url, fits a single QR code ----
+// ---- compact wire format v2: 178 bytes, base64url, fits a single QR code ----
+// 1 version | 20 from | 20 to | 16 amount | 8 fee | 8 nonce | 8 deadline | 32 ref | 65 signature
 
-const VOUCHER_PREFIX = 'mp1:'
-const VOUCHER_BYTES = 138
+const VOUCHER_PREFIX = 'mp2:'
+const VOUCHER_BYTES = 178
 
-function toB64Url(bytes: Uint8Array): string {
+export function toB64Url(bytes: Uint8Array): string {
   let s = ''
   bytes.forEach((b) => {
     s += String.fromCharCode(b)
@@ -114,7 +139,7 @@ function toB64Url(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-function fromB64Url(input: string): Uint8Array {
+export function fromB64Url(input: string): Uint8Array {
   const b64 = input.replace(/-/g, '+').replace(/_/g, '/')
   const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
   const out = new Uint8Array(bin.length)
@@ -129,13 +154,15 @@ function uint(n: bigint, size: number): Uint8Array {
 export function encodeVoucher(v: Voucher): string {
   const p = v.payment
   const bytes = new Uint8Array(VOUCHER_BYTES)
-  bytes[0] = 1
+  bytes[0] = 2
   bytes.set(hexToBytes(p.from), 1)
   bytes.set(hexToBytes(p.to), 21)
   bytes.set(uint(p.amount, 16), 41)
-  bytes.set(uint(p.nonce, 8), 57)
-  bytes.set(uint(p.deadline, 8), 65)
-  bytes.set(hexToBytes(v.signature), 73)
+  bytes.set(uint(p.fee, 8), 57)
+  bytes.set(uint(p.nonce, 8), 65)
+  bytes.set(uint(p.deadline, 8), 73)
+  bytes.set(hexToBytes(p.ref), 81)
+  bytes.set(hexToBytes(v.signature), 113)
   return VOUCHER_PREFIX + toB64Url(bytes)
 }
 
@@ -147,17 +174,19 @@ export function decodeVoucher(text: string): Voucher {
   const raw = text.trim()
   if (!raw.startsWith(VOUCHER_PREFIX)) throw new Error('Not a MeshPay payment code.')
   const bytes = fromB64Url(raw.slice(VOUCHER_PREFIX.length))
-  if (bytes.length !== VOUCHER_BYTES || bytes[0] !== 1) throw new Error('Unsupported or damaged payment code.')
+  if (bytes.length !== VOUCHER_BYTES || bytes[0] !== 2) throw new Error('Unsupported or damaged payment code.')
   const at = (from: number, to: number) => bytesToHex(bytes.slice(from, to))
   return {
     payment: {
       from: getAddress(at(1, 21)),
       to: getAddress(at(21, 41)),
       amount: BigInt(at(41, 57)),
-      nonce: BigInt(at(57, 65)),
-      deadline: BigInt(at(65, 73)),
+      fee: BigInt(at(57, 65)),
+      nonce: BigInt(at(65, 73)),
+      deadline: BigInt(at(73, 81)),
+      ref: at(81, 113),
     },
-    signature: at(73, 138),
+    signature: at(113, 178),
   }
 }
 
@@ -165,17 +194,36 @@ export function decodeVoucher(text: string): Voucher {
 
 const REQUEST_PREFIX = 'meshpay:'
 
-export function encodeRequest(address: Address, amount?: string): string {
-  return `${REQUEST_PREFIX}${address}${amount ? `?amount=${encodeURIComponent(amount)}` : ''}`
+export interface PaymentRequest {
+  address: Address
+  amount?: string
+  /** Invoice reference the payment must carry so the receiver can match it. */
+  ref?: Hex
+  note?: string
 }
 
-export function parseRequest(text: string): { address: Address; amount?: string } | null {
+export function encodeRequest(r: PaymentRequest): string {
+  const q = new URLSearchParams()
+  if (r.amount) q.set('amount', r.amount)
+  if (r.ref) q.set('ref', r.ref)
+  if (r.note) q.set('note', r.note.slice(0, 80))
+  const query = q.toString()
+  return `${REQUEST_PREFIX}${r.address}${query ? `?${query}` : ''}`
+}
+
+export function parseRequest(text: string): PaymentRequest | null {
   const raw = text.trim()
   if (!raw.startsWith(REQUEST_PREFIX)) return null
   const [addr, query] = raw.slice(REQUEST_PREFIX.length).split('?')
   if (!isAddress(addr)) return null
-  const amount = query ? new URLSearchParams(query).get('amount') ?? undefined : undefined
-  return { address: getAddress(addr), amount }
+  const q = new URLSearchParams(query ?? '')
+  const ref = q.get('ref')
+  return {
+    address: getAddress(addr),
+    amount: q.get('amount') ?? undefined,
+    ref: ref && /^0x[0-9a-fA-F]{64}$/.test(ref) ? (ref as Hex) : undefined,
+    note: q.get('note') ?? undefined,
+  }
 }
 
 /** Reject codes returned by the MeshPay contract. */

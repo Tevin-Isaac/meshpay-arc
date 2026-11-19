@@ -4,7 +4,7 @@ import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from 'w
 import { CHAIN, MESHPAY_ABI, MESHPAY_ADDRESS, REJECT_LABELS } from '@/lib/mesh'
 import { toPayment } from '@/lib/items'
 import { getOnline } from '@/lib/net'
-import { getDeviceAccount, updateItem, type StoredItem } from '@/lib/store'
+import { getDeviceAccount, getState, updateItem, type StoredItem } from '@/lib/store'
 import { useDeviceUsdc } from './useMeshData'
 
 /** The device key can pay its own network fees once it holds this much USDC. */
@@ -14,6 +14,8 @@ export interface SettleResult {
   settled: number
   skipped: number
   hash?: Hex
+  /** Courier tips this phone earned for settling, in USDC base units. */
+  tips: bigint
 }
 
 export function useSettle() {
@@ -52,7 +54,7 @@ export function useSettle() {
           else if (code === 5) updateItem(item.id, { note: REJECT_LABELS[5] })
           else updateItem(item.id, { status: 'invalid', note: REJECT_LABELS[code] ?? 'Rejected' })
         }
-        if (ready.length === 0) return { settled: 0, skipped: pending.length }
+        if (ready.length === 0) return { settled: 0, skipped: pending.length, tips: 0n }
 
         const ps = ready.map(toPayment)
         const sigs = ready.map((i) => i.signature)
@@ -99,6 +101,7 @@ export function useSettle() {
 
         const logs = parseEventLogs({ abi: MESHPAY_ABI, logs: receipt.logs, eventName: ['Settled', 'Rejected'] })
         let settled = 0
+        let tips = 0n
         for (const item of ready) {
           const from = item.from.toLowerCase()
           const nonce = BigInt(item.nonce)
@@ -112,10 +115,11 @@ export function useSettle() {
             })
           } else if (ok) {
             settled += 1
+            if (ok.eventName === 'Settled' && item.from.toLowerCase() !== getState().address.toLowerCase()) tips += ok.args.fee
             updateItem(item.id, { status: 'settled', txHash: hash, note: undefined })
           }
         }
-        return { settled, skipped: pending.length - settled, hash }
+        return { settled, skipped: pending.length - settled, hash, tips }
       } finally {
         setBusy(false)
       }

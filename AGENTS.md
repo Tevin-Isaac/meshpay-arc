@@ -48,3 +48,11 @@ bun run dev
 - Buy USDC: Circle App Kit onramp in sandbox (`api-test.circle.com`, `onramp-sandbox.arc.io`). Backend `scripts/onramp-server.ts` (`bun run server`, port 3001, proxied at `/api` by Vite) mints sessions only after the wallet signs `onrampAuthMessage`. Sandbox test funds land on Ethereum, not Arc.
 - Offramp: Circle has no self-serve hosted offramp widget for apps. Cash out sends USDC to the wallet or any address (exchange/off-ramp deposit address). A bank payout needs a licensed provider partnership.
 - Production onramp needs a mainnet API key, KYB, and `ONRAMP_REFERRER_DOMAIN` set to the KYB domain.
+
+## WayaMesh v2 (current)
+
+- Settlement contract v2: `MeshPayV2` at `0xd619b77bb8389a632800c300969ef152099f7691` on Arc Testnet (5042002). Constructor: USDC `0x3600000000000000000000000000000000000000`, withdraw delay 86400. 50 Foundry tests pass. Reviewed twice; the bond/shortfall idea was removed after each version opened a new drain path for the payer.
+- `VITE_MESHPAY_ADDRESS` points at v2. v1 (`0x41f84ad06cd7f256c67fbb62906899c29611d6ef`) is superseded.
+- App: five tabs (Wallet, Chats, History, Mesh, Settings), PIN vault with recovery phrase, encrypted chat over Nostr relays and offline codes, Autopilot, guardian shards.
+- Porting guide and test vectors for wayamesh-mobile: `docs/PORTING-TO-WAYAMESH-MOBILE.md`.
+- Dev server must run with `--host 0.0.0.0 --port 5173 --strictPort` so the Arc Studio preview can reach it.

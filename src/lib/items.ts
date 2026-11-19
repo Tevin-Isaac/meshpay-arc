@@ -7,8 +7,10 @@ export function toPayment(i: StoredItem): Payment {
     from: i.from,
     to: i.to,
     amount: BigInt(i.amount),
+    fee: BigInt(i.fee ?? '0'),
     nonce: BigInt(i.nonce),
     deadline: BigInt(i.deadline),
+    ref: i.ref,
   }
 }
 
@@ -24,8 +26,10 @@ export function makeItem(v: Voucher, source: StoredItem['source']): StoredItem {
     from: p.from,
     to: p.to,
     amount: p.amount.toString(),
+    fee: p.fee.toString(),
     nonce: p.nonce.toString(),
     deadline: p.deadline.toString(),
+    ref: p.ref,
     signature: v.signature,
     createdAt: Date.now(),
     status: 'pending',

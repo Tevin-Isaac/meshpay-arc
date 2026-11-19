@@ -34,7 +34,7 @@ function BankCashOut() {
           href={OFFRAMP_URL}
           target="_blank"
           rel="noreferrer"
-          className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-white font-semibold"
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl font-semibold"
           style={{ border: '1px solid var(--border)', color: 'var(--ink)' }}
         >
           Open off-ramp <ExternalLink className="size-3.5" />
@@ -208,9 +208,9 @@ function AddFundsBody() {
               onClick={() => setTab(t)}
               className="min-h-10 rounded-xl text-xs font-semibold"
               style={{
-                background: tab === t ? 'white' : 'transparent',
+                background: tab === t ? 'var(--surface-strong)' : 'transparent',
                 color: tab === t ? 'var(--ink)' : 'var(--muted)',
-                boxShadow: tab === t ? '0 1px 3px rgba(18,45,69,0.12)' : 'none',
+                boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.5)' : 'none',
               }}
             >
               {t === 'add' ? 'Add funds' : 'Cash out'}

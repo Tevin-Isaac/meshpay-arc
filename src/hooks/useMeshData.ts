@@ -8,11 +8,11 @@ import { useNet } from '@/lib/net'
 import { getDeviceAccount, setReserveCache, updateItem, useMeshState, type StoredItem } from '@/lib/store'
 
 export function useDevice() {
-  const { deviceKey } = useMeshState()
+  const { status } = useMeshState()
   return useMemo(() => {
-    void deviceKey
+    void status
     return getDeviceAccount()
-  }, [deviceKey])
+  }, [status])
 }
 
 /** Addresses that count as "me" when deciding if a payment is addressed to this user. */
@@ -51,7 +51,7 @@ export function useSpendable() {
   const { items } = useMeshState()
   const committed = items
     .filter((i) => i.source === 'signed' && i.status === 'pending')
-    .reduce((sum, i) => sum + BigInt(i.amount), 0n)
+    .reduce((sum, i) => sum + BigInt(i.amount) + BigInt(i.fee ?? '0'), 0n)
   const spendable = reserve.raw === null ? null : reserve.raw > committed ? reserve.raw - committed : 0n
   return { reserve, committed, spendable }
 }

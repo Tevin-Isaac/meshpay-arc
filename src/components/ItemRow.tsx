@@ -51,6 +51,8 @@ export function ItemRow({
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <StatusChip item={item} check={check} />
+          {item.risky && item.status === 'pending' && <Chip tone="warn">Above your limit</Chip>}
+          {BigInt(item.fee ?? '0') > 0n && <Chip>Tip {fmtUsdc(BigInt(item.fee))}</Chip>}
           <span className="text-[11px]" style={{ color: 'var(--subtle)' }}>
             {timeAgo(item.createdAt)}
           </span>

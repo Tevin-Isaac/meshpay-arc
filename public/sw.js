@@ -1,6 +1,6 @@
-// MeshPay service worker: keeps the app usable with no connection.
+// WayaMesh service worker: keeps the app usable with no connection.
 // Strategy: network first, fall back to the last cached copy.
-const CACHE = 'meshpay-shell-v1'
+const CACHE = 'wayamesh-shell-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

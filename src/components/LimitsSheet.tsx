@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { Copy, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
-import { fmtUsdc, shortAddress } from '@/lib/format'
+import { fmtUsdc } from '@/lib/format'
 import { spentToday } from '@/lib/policy'
-import { setPolicy, useMeshState } from '@/lib/store'
-import { useDevice } from '@/hooks/useMeshData'
-import { AmountInput, GhostButton, PrimaryButton, Sheet } from './ui'
+import { setPolicy, setSettings, useMeshState } from '@/lib/store'
+import { AmountInput, PrimaryButton, Sheet } from './ui'
 
 export function LimitsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -17,11 +15,10 @@ export function LimitsSheet({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 function LimitsBody({ onClose }: { onClose: () => void }) {
-  const { policy, items, deviceKey } = useMeshState()
-  const device = useDevice()
+  const { policy, items, settings } = useMeshState()
   const [perTx, setPerTx] = useState(policy.perTx)
   const [daily, setDaily] = useState(policy.daily)
-  const [reveal, setReveal] = useState(false)
+  const [accept, setAccept] = useState(settings.acceptLimit)
 
   const used = spentToday(items)
   const dailyCap = (() => {
@@ -40,7 +37,13 @@ function LimitsBody({ onClose }: { onClose: () => void }) {
     } catch {
       return toast.error('Enter valid amounts.')
     }
+    try {
+      parseUsdc(accept || '0')
+    } catch {
+      return toast.error('Enter valid amounts.')
+    }
     setPolicy({ perTx: perTx || '0', daily: daily || '0' })
+    setSettings({ acceptLimit: accept || '0' })
     toast.success('Limits saved on this device.')
     onClose()
   }
@@ -76,34 +79,14 @@ function LimitsBody({ onClose }: { onClose: () => void }) {
           </div>
           <AmountInput value={daily} onChange={setDaily} />
         </div>
+        <div>
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
+            Accept offline up to
+          </div>
+          <AmountInput value={accept} onChange={setAccept} hint="Payments above this are flagged until they settle" />
+        </div>
         <PrimaryButton onClick={save}>Save limits</PrimaryButton>
 
-        <div className="inner space-y-2 rounded-2xl p-4">
-          <div className="text-sm font-semibold">Device key</div>
-          <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
-            This phone holds the key that signs your payments, at <span className="mono">{shortAddress(device.address)}</span>. It is stored in this
-            browser. Back it up, and anyone who has it can spend your offline balance. A native app would keep it in the phone's secure hardware.
-          </p>
-          {reveal && (
-            <div className="mono break-all rounded-xl p-3 text-[11px]" style={{ background: 'var(--surface-muted)' }}>
-              {deviceKey}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <GhostButton onClick={() => setReveal((r) => !r)}>
-              {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              {reveal ? 'Hide' : 'Reveal key'}
-            </GhostButton>
-            <GhostButton
-              onClick={() => {
-                void navigator.clipboard.writeText(deviceKey).then(() => toast.success('Key copied. Store it somewhere safe.'))
-              }}
-            >
-              <Copy className="size-4" />
-              Copy key
-            </GhostButton>
-          </div>
-        </div>
         <p className="text-center text-[11px]" style={{ color: 'var(--subtle)' }}>
           Daily cap {formatUsdc(dailyCap)} USDC
         </p>

@@ -5,18 +5,33 @@ import type { StoredItem } from '@/lib/store'
 import { CodeShare } from './CodeShare'
 import { Sheet } from './ui'
 
-/** Re-show a held payment so another phone can pick it up and carry it to the internet. */
-export function CodeSheet({ item, onClose }: { item: StoredItem | null; onClose: () => void }) {
+export interface RawCode {
+  title: string
+  hint: string
+  code: string
+}
+
+/** Re-show a held payment, or a sealed message, so another phone can pick it up and carry it to the internet. */
+export function CodeSheet({ item, raw, onClose }: { item: StoredItem | null; raw?: RawCode | null; onClose: () => void }) {
   return (
-    <Sheet open={!!item} onClose={onClose} title="Payment code">
-      {item && (
+    <Sheet open={!!item || !!raw} onClose={onClose} title={raw?.title ?? 'Payment code'}>
+      {raw ? (
         <div className="space-y-4">
           <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-            {fmtUsdc(BigInt(item.amount))} USDC to <span className="mono">{shortAddress(item.to)}</span>. Any phone that scans this can settle it once it
-            finds a connection. Duplicates are caught automatically.
+            {raw.hint}
           </p>
-          <CodeShare code={encodeVoucher(toVoucher(item))} label="Payment QR code" />
+          <CodeShare code={raw.code} label="Message QR code" />
         </div>
+      ) : (
+        item && (
+          <div className="space-y-4">
+            <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
+              {fmtUsdc(BigInt(item.amount))} USDC to <span className="mono">{shortAddress(item.to)}</span>. Any phone that scans this can settle it once it
+              finds a connection. Duplicates are caught automatically.
+            </p>
+            <CodeShare code={encodeVoucher(toVoucher(item))} label="Payment QR code" />
+          </div>
+        )
       )}
     </Sheet>
   )

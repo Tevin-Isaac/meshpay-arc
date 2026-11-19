@@ -1,15 +1,30 @@
 {
-  "name": "MeshPay",
-  "short_name": "MeshPay",
-  "description": "Sign USDC payments with no internet and settle them on Arc later.",
+  "name": "WayaMesh",
+  "short_name": "WayaMesh",
+  "description": "Self-custody USDC on Arc. Sign payments offline, chat privately, settle when anyone is online.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f9f9fc",
-  "theme_color": "#f9f9fc",
+  "background_color": "#07070f",
+  "theme_color": "#07070f",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

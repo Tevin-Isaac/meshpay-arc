@@ -1,4 +1,4 @@
-import { ArrowUpRight, ArrowDownLeft, CreditCard, Plus, ScanLine, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, ArrowDownLeft, CreditCard, Gauge, Plus, ScanLine, ShieldCheck } from 'lucide-react'
 import { TokenUSDC } from '@web3icons/react'
 import { fmtUsdc, timeAgo } from '@/lib/format'
 import { roleOf } from '@/lib/items'
@@ -11,13 +11,15 @@ interface Actions {
   onScan: () => void
   onAdd: () => void
   onLimits: () => void
+  onSecurity: () => void
   onBuy: () => void
   canBuy: boolean
 }
 
-export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onBuy, canBuy }: Actions) {
+export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecurity, onBuy, canBuy }: Actions) {
   const { spendable, reserve, committed } = useSpendable()
-  const { items } = useMeshState()
+  const { items, settings, status } = useMeshState()
+  const hide = settings.hideBalances ? 'select-none blur-md' : ''
   const wallet = useWalletUsdc()
   const mine = useMyAddresses()
   const incoming = items
@@ -44,18 +46,23 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onBuy,
         <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
           Offline balance
         </span>
-        <button
-          onClick={onLimits}
-          className="flex min-h-11 items-center gap-1 text-xs font-semibold"
-          style={{ color: 'var(--accent-hover)' }}
-        >
-          <ShieldCheck className="size-4" /> Limits
-        </button>
+        <div className="flex items-center">
+          <button onClick={onLimits} className="flex min-h-11 items-center gap-1 px-2 text-xs font-semibold" style={{ color: 'var(--accent-hover)' }}>
+            <Gauge className="size-4" /> Limits
+          </button>
+          <button
+            onClick={onSecurity}
+            className="flex min-h-11 items-center gap-1 pl-2 text-xs font-semibold"
+            style={{ color: status === 'plain' ? 'var(--warn)' : 'var(--accent-hover)' }}
+          >
+            <ShieldCheck className="size-4" /> Security
+          </button>
+        </div>
       </div>
 
       <div className="-mt-1 flex items-center gap-2">
         <TokenUSDC variant="branded" size={28} />
-        <span className="display text-5xl font-bold tabular-nums" style={{ color: 'var(--ink)' }}>
+        <span className={`display text-5xl font-bold tabular-nums ${hide}`} style={{ color: 'var(--ink)' }}>
           {spendable === null ? '—' : fmtUsdc(spendable)}
         </span>
         <span className="mt-3 text-lg font-medium" style={{ color: 'var(--subtle)' }}>
@@ -68,7 +75,7 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onBuy,
 
       <div className="inner mt-3 flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-xs">
         <span style={{ color: 'var(--muted)' }}>Wallet, pays online</span>
-        <span className="font-semibold tabular-nums" style={{ color: 'var(--ink)' }}>
+        <span className={`font-semibold tabular-nums ${hide}`} style={{ color: 'var(--ink)' }}>
           {wallet === null ? 'Connect to see' : `${fmtUsdc(wallet)} USDC`}
         </span>
       </div>
@@ -88,7 +95,7 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onBuy,
             className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl text-xs font-semibold transition-transform active:scale-[0.97]"
             style={
               primary
-                ? { background: 'var(--accent)', color: 'white' }
+                ? { background: 'var(--accent)', color: 'var(--on-accent)' }
                 : { background: 'var(--surface-muted)', color: 'var(--ink)', border: '1px solid var(--border)' }
             }
           >

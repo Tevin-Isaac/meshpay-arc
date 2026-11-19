@@ -24,7 +24,10 @@ export function SettleCard({ items, onShowCode }: { items: StoredItem[]; onShowC
   const run = async () => {
     try {
       const result = await settle(pending)
-      if (result.settled > 0) toast.success(`Settled ${result.settled} payment${result.settled === 1 ? '' : 's'} on Arc.`)
+      if (result.settled > 0) {
+        toast.success(`Settled ${result.settled} payment${result.settled === 1 ? '' : 's'} on Arc.`)
+        if (result.tips > 0n) toast.success(`You earned ${fmtUsdc(result.tips)} USDC in courier tips.`)
+      }
       else toast.info('Nothing to settle right now. See each payment for why.')
     } catch (e) {
       const msg = parseOnchainError(e)
