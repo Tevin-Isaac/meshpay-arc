@@ -2,7 +2,7 @@ import { IS_MAINNET, NETWORK_LABEL } from '@/lib/network'
 import { useRampConfig } from '@/lib/ramp'
 import { type ComponentType, type ReactNode } from 'react'
 import { ExternalWalletCard } from '../ExternalWallet'
-import { Pencil, ArrowUpFromLine, ChevronRight, Copy, Droplets, ExternalLink, Gauge, HandCoins, Bot, Link2, ShieldCheck, CreditCard, Smartphone } from 'lucide-react'
+import { Bell, MessageCircle, Pencil, ArrowUpFromLine, ChevronRight, Copy, Droplets, ExternalLink, Gauge, HandCoins, Bot, Link2, ShieldCheck, CreditCard, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { buildAddressExplorerUrl } from '@/onchain-facts'
 import { CHAIN, MESHPAY_ADDRESS } from '@/lib/mesh'
@@ -118,7 +118,9 @@ function ProfileCard() {
 }
 
 export function SettingsTab() {
-  const { status, standing } = useMeshState()
+  const { status, standing, settings } = useMeshState()
+  const discoverable = settings.discoverable
+  const [alerts, setAlerts] = useState<NotificationPermission>(typeof Notification === 'undefined' ? 'denied' : Notification.permission)
   const sheets = useSheets()
   const canBuy = useOnrampAvailable()
   const ramp = useRampConfig()
@@ -164,6 +166,27 @@ export function SettingsTab() {
           onClick={open('security')}
         />
         <Row icon={Gauge} title="Spending limits" hint="Per payment, per day, and what you accept offline" onClick={open('limits')} />
+        <Row
+          icon={MessageCircle}
+          title="Let people find my chat"
+          hint={discoverable ? 'Anyone who has your address can message you. Only your public key is listed, never your name.' : 'Off. People can message you only after you share your contact card.'}
+          status={discoverable ? 'On' : 'Off'}
+          onClick={() => {
+            setSettings({ discoverable: !discoverable })
+            toast.success(discoverable ? 'Turned off. Your listing is cleared.' : 'Turned on.')
+          }}
+        />
+        <Row
+          icon={Bell}
+          title="Payment alerts"
+          hint={alerts === 'granted' ? 'You get a notice when money arrives and this tab is in the background.' : alerts === 'denied' ? 'Blocked in your browser settings. You still see a notice inside the app.' : 'Get a notice when money arrives while this tab is in the background.'}
+          status={alerts === 'granted' ? 'On' : 'Off'}
+          onClick={() => {
+            if (typeof Notification === 'undefined') return toast.error('This browser does not support alerts.')
+            if (Notification.permission === 'granted') return toast.success('Alerts are on. Turn them off in your browser site settings.')
+            void Notification.requestPermission().then((p) => setAlerts(p))
+          }}
+        />
       </Group>
 
       <Group title="Automation">

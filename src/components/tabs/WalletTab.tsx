@@ -32,7 +32,7 @@ export function WalletTab() {
         onMpesa={ramp ? () => sheets.open('mpesa') : undefined}
       />
       <FaucetCard />
-      <GetStarted onAdd={() => sheets.open('add')} onSend={() => sheets.open('send')} />
+      <GetStarted onAdd={() => sheets.open('add')} onSend={() => sheets.open('send')} onSign={() => sheets.open('send', { mode: 'offline' })} />
       <SettleCard items={items} onShowCode={sheets.showCode} />
       <section className="glass rounded-3xl p-5">
         <div className="flex items-center justify-between">

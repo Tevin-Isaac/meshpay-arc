@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAccount } from 'wagmi'
-import { ScanLine } from 'lucide-react'
+import { Copy, ScanLine } from 'lucide-react'
+import { toast } from 'sonner'
 import { encodeRequest, randomRef } from '@/lib/mesh'
 import { shortAddress } from '@/lib/format'
 import { addInvoice, useMeshState } from '@/lib/store'
@@ -22,11 +23,11 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
   const device = useDevice()
   const { address: wallet } = useAccount()
   const { invoices, settings } = useMeshState()
-  const [tab, setTab] = useState<'pay' | 'card'>('pay')
   const [target, setTarget] = useState<'device' | 'wallet'>('device')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [made, setMade] = useState<string | null>(null)
+  const [requesting, setRequesting] = useState(false)
 
   const address = target === 'wallet' && wallet ? wallet : device.address
 
@@ -38,34 +39,7 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ background: 'var(--surface-muted)' }}>
-        {(['pay', 'card'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="min-h-10 rounded-xl text-xs font-semibold"
-            style={{
-              background: tab === t ? 'var(--surface-strong)' : 'transparent',
-              color: tab === t ? 'var(--ink)' : 'var(--muted)',
-              boxShadow: tab === t ? 'var(--seg-shadow)' : 'none',
-            }}
-          >
-            {t === 'pay' ? 'Get paid' : 'My contact card'}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'card' ? (
-        <>
-          <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-            Share this once with someone you trust. It lets them send you end-to-end encrypted messages and payments, online or off.
-          </p>
-          <CodeShare code={encodeCard({ address: device.address, pubkey: myPubkey(), name: settings.displayName })} label="Contact card QR code" />
-          <p className="mono text-center text-xs" style={{ color: 'var(--subtle)' }}>
-            {shortAddress(device.address)}
-          </p>
-        </>
-      ) : made ? (
+      {made ? (
         <>
           <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
             Show this to the payer. When they pay with it, the payment is tagged to this request so you can see it was paid.
@@ -75,6 +49,28 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
             {shortAddress(address)}
             {amount ? ` · ${amount} USDC` : ''}
           </p>
+        </>
+      ) : !requesting ? (
+        <>
+          <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
+            Share your address or let someone scan this code. They can pay you right away, and they can add you as a contact to message you.
+          </p>
+          <CodeShare code={encodeCard({ address: device.address, pubkey: myPubkey(), name: settings.displayName })} label="Your address and contact card QR code" />
+          <div className="inner rounded-2xl px-4 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
+              Your address
+            </div>
+            <p className="mono mt-1 break-all text-xs" data-testid="my-address">{address}</p>
+            <GhostButton
+              className="mt-2 w-full"
+              onClick={() => void navigator.clipboard.writeText(address).then(() => toast.success('Address copied.'), () => toast.error('Could not copy.'))}
+            >
+              <Copy className="size-4" /> Copy address
+            </GhostButton>
+          </div>
+          <GhostButton className="w-full" onClick={() => setRequesting(true)}>
+            Request a specific amount
+          </GhostButton>
         </>
       ) : (
         <>

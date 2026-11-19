@@ -21,6 +21,7 @@ import {
   type Inner,
 } from './crypto'
 import { publish, relayStatus } from './relay'
+import { resolveContact } from './directory'
 
 export function myPubkey(): Hex {
   return pubkeyOf(getDeviceKey())
@@ -60,7 +61,11 @@ export interface Content {
 
 /** Encrypts, stores and (when possible) sends a message. Offline it waits in the outbox and has a hand-over code. */
 export async function sendChat(contact: Contact, content: Content, voucherId?: string): Promise<ChatMessage> {
-  if (!contact.pubkey) throw new Error('Add their contact card to chat. You can still pay them.')
+  if (!contact.pubkey) {
+    // Saved by address only: look for the chat key they list publicly under that address.
+    if (await resolveContact(contact.address, true)) contact = getState().contacts.find((c) => c.address.toLowerCase() === contact.address.toLowerCase()) ?? contact
+  }
+  if (!contact.pubkey) throw new Error('They have not turned on chat yet. Ask them to open Wayamesh once and share their contact card, then try again. You can still pay them.')
   const account = getDeviceAccount()
   const inner = await buildInner(account, contact.address, content)
   const box = sealBox(packInner(inner), contact.pubkey)

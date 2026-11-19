@@ -8,6 +8,7 @@ import { DeleteContactSheet } from './ContactActions'
 import { addInvoice, purgeExpiredMessages, patchContact, removeMessagesFrom, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { safetyNumber } from '@/lib/chat/crypto'
 import { myPubkey, sendChat } from '@/lib/chat/service'
+import { resolveContact } from '@/lib/chat/directory'
 import { useNet } from '@/lib/net'
 import { useRelayStatus } from '@/lib/chat/relay'
 import { CodeSheet } from './CodeSheet'
@@ -35,6 +36,9 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
   useEffect(() => {
     purgeExpiredMessages() // opening a thread drops anything older than 24 hours
   }, [contact.address])
+  useEffect(() => {
+    if (!contact.pubkey) void resolveContact(contact.address, true).catch(() => undefined)
+  }, [contact.address, contact.pubkey])
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' })
   }, [thread.length])
@@ -106,7 +110,7 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
           </label>
           {!contact.pubkey && (
             <p className="text-pretty font-semibold" style={{ color: 'var(--warn)' }}>
-              Saved by address. You can pay them. To chat, add their contact card.
+              Saved by address. You can pay them now. Chat switches on as soon as they open Wayamesh, or when you add their contact card.
             </p>
           )}
           <div className="flex items-center gap-1.5 font-semibold">

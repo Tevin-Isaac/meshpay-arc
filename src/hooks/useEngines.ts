@@ -9,6 +9,10 @@ import { flushOutbox, handleRelayContent, myPubkey, sendChat } from '@/lib/chat/
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
 import { fmtExact } from '@/lib/format'
 import { toast } from 'sonner'
+import { usePublicClient } from 'wagmi'
+import { CHAIN } from '@/lib/mesh'
+import { syncChain } from '@/lib/chainSync'
+import { publishListing, resolveContact } from '@/lib/chat/directory'
 
 /** 24-hour chat expiry: purge old messages on start, when the app returns to the foreground, and every 5 minutes. */
 export function usePurgeEngine(active: boolean) {
@@ -118,4 +122,57 @@ export function useStandingRunner(active: boolean) {
     const timer = setInterval(() => void run(), 20_000)
     return () => clearInterval(timer)
   }, [active])
+}
+
+/**
+ * Keeps History in step with the chain: money that arrives (or leaves from another device) shows up within seconds,
+ * with an alert for incoming payments. The first pass reads deeper to fill in older history.
+ */
+export function useChainSync(active: boolean) {
+  const { online } = useNet()
+  const client = usePublicClient({ chainId: CHAIN.id })
+  useEffect(() => {
+    if (!active || !online) return
+    let deep = true
+    let stopped = false
+    const run = async () => {
+      if (stopped || document.visibilityState !== 'visible') return
+      try {
+        await syncChain(client as never, { deep })
+        deep = false
+      } catch {
+        // try again on the next tick
+      }
+    }
+    void run()
+    const timer = setInterval(() => void run(), 8000)
+    window.addEventListener('focus', run)
+    document.addEventListener('visibilitychange', run)
+    return () => {
+      stopped = true
+      clearInterval(timer)
+      window.removeEventListener('focus', run)
+      document.removeEventListener('visibilitychange', run)
+    }
+  }, [active, online, client])
+}
+
+/** Lists this wallet's chat key (no name) so contacts saved by address can message it, and finds the keys of such contacts. */
+export function useDirectoryEngine(active: boolean) {
+  const { online } = useNet()
+  const { settings } = useMeshState()
+  const on = settings.discoverable
+  useEffect(() => {
+    if (!active || !online) return
+    void publishListing(on, true).catch(() => undefined)
+  }, [active, online, on])
+  useEffect(() => {
+    if (!active || !online) return
+    const run = () => {
+      for (const c of getState().contacts.filter((x) => !x.pubkey && !x.request).slice(0, 5)) void resolveContact(c.address).catch(() => undefined)
+    }
+    run()
+    const timer = setInterval(run, 20_000)
+    return () => clearInterval(timer)
+  }, [active, online])
 }

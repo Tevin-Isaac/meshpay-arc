@@ -162,7 +162,7 @@ export function useChecks(items: StoredItem[]) {
   useEffect(() => {
     if (!q.data) return
     for (const [id, code] of Object.entries(q.data)) {
-      if (code === 3) updateItem(id, { status: 'duplicate', note: 'Already settled onchain' })
+      if (code === 3) updateItem(id, { status: 'settled', note: 'Settled onchain' })
       else if (code === 2) updateItem(id, { status: 'expired', note: 'Past its deadline' })
       else if (code === 1 || code === 4) updateItem(id, { status: 'invalid', note: 'Rejected by the contract' })
     }

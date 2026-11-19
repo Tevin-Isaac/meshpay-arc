@@ -3,7 +3,7 @@ import { buildTxExplorerUrl } from '@/onchain-facts'
 import { fmtExact, shortAddress, timeAgo } from '@/lib/format'
 import { CHAIN } from '@/lib/mesh'
 import type { Role } from '@/lib/items'
-import type { StoredItem } from '@/lib/store'
+import { useMeshState, type StoredItem } from '@/lib/store'
 import { Chip } from './ui'
 
 function StatusChip({ item, check }: { item: StoredItem; check?: number }) {
@@ -28,18 +28,27 @@ export function ItemRow({
   check?: number
   onShowCode?: () => void
 }) {
+  const { contacts } = useMeshState()
+  const nameOf = (a: string) => contacts.find((c) => c.address.toLowerCase() === a.toLowerCase())?.name || shortAddress(a)
   const amount = fmtExact(BigInt(item.amount))
   const Icon = role === 'out' ? ArrowUpRight : role === 'in' ? ArrowDownLeft : Repeat2
   const title =
-    role === 'out'
+    item.label === 'deposit'
+      ? 'Moved to offline reserve'
+      : item.label === 'withdraw'
+        ? 'Withdrawn from offline reserve'
+        : item.label === 'settled' && role === 'in'
+          ? 'Offline payment received'
+    : role === 'out'
       ? item.kind === 'cashout'
         ? 'Cash out to wallet'
-        : `Paid ${shortAddress(item.to)}`
+        : `Paid ${nameOf(item.to)}`
       : role === 'in'
-        ? `From ${shortAddress(item.from)}`
+        ? `From ${nameOf(item.from)}`
         : `Carrying ${shortAddress(item.from)} → ${shortAddress(item.to)}`
-  const sign = role === 'out' ? '−' : role === 'in' ? '+' : ''
-  const color = role === 'in' && item.status !== 'invalid' ? 'var(--success)' : 'var(--ink)'
+  const internal = item.label === 'deposit' || item.label === 'withdraw'
+  const sign = internal ? '' : role === 'out' ? '−' : role === 'in' ? '+' : ''
+  const color = role === 'in' && !internal && item.status !== 'invalid' ? 'var(--success)' : 'var(--ink)'
 
   return (
     <li className="flex items-center gap-3 py-3">

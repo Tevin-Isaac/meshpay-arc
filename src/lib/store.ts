@@ -26,6 +26,8 @@ export interface StoredItem {
   source: 'signed' | 'received'
   /** `cashout`: reserve to the user's own wallet. `online`: paid straight from the wallet. Neither counts against device limits. */
   kind?: 'cashout' | 'online'
+  /** For payments read from the chain: what the transfer was. Shown in History. */
+  label?: 'deposit' | 'withdraw' | 'settled'
   from: Address
   to: Address
   amount: string
@@ -123,6 +125,8 @@ export interface Settings {
   relays: string[]
   /** Name shown in the profile and put on the contact card. Empty means 'Your wallet'. */
   displayName: string
+  /** Let people who have my address find my chat key (a public listing with no name). */
+  discoverable: boolean
 }
 
 export interface Data {
@@ -154,7 +158,7 @@ function emptyData(): Data {
     carried: [],
     standing: [],
     invoices: [],
-    settings: { autoLockMinutes: 2, hideBalances: false, acceptLimit: '25', tip: '0', relays: DEFAULT_RELAYS, displayName: '' },
+    settings: { autoLockMinutes: 2, hideBalances: false, acceptLimit: '25', tip: '0', relays: DEFAULT_RELAYS, displayName: '', discoverable: true },
     relaySince: 0,
     audit: [],
   }
@@ -194,6 +198,7 @@ export function sanitizeData(input: unknown): Data {
       tip: str(s.tip, base.settings.tip, 20),
       relays: relays.length ? relays : base.settings.relays,
       displayName: str(s.displayName, '', 24).replace(/[\u0000-\u001f]/g, ''),
+      discoverable: s.discoverable !== false,
     },
     relaySince: typeof d.relaySince === 'number' ? d.relaySince : 0,
     audit: asArray<AuditEntry>(d.audit, CAPS.audit),

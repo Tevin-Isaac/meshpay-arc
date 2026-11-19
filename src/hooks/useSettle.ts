@@ -50,7 +50,7 @@ export function useSettle() {
           if (res.status !== 'fulfilled') return
           const code = Number(res.value)
           if (code === 0) ready.push(item)
-          else if (code === 3) updateItem(item.id, { status: 'duplicate', note: 'Already settled onchain' })
+          else if (code === 3) updateItem(item.id, { status: 'settled', note: 'Settled onchain' })
           else if (code === 2) updateItem(item.id, { status: 'expired', note: 'Past its deadline' })
           else if (code === 5) updateItem(item.id, { note: REJECT_LABELS[5] })
           else updateItem(item.id, { status: 'invalid', note: REJECT_LABELS[code] ?? 'Rejected' })

@@ -14,6 +14,8 @@ export interface SendPrefill {
   /** Invoice reference from a payment request. */
   ref?: Hex
   note?: string
+  /** Open directly on Sign offline. */
+  mode?: 'offline'
 }
 
 export function SendSheet({ open, onClose, prefill }: { open: boolean; onClose: () => void; prefill: SendPrefill }) {
@@ -30,7 +32,7 @@ function SendBody({ onClose, prefill }: { onClose: () => void; prefill: SendPref
   const wallet = useDeviceUsdc()
   const { spendable } = useSpendable()
   const { contacts } = useMeshState()
-  const [picked, setPicked] = useState<'pay' | 'offline' | null>(null)
+  const [picked, setPicked] = useState<'pay' | 'offline' | null>(prefill.mode ?? null)
   // Online with USDC in the built-in wallet: pay now. Otherwise sign offline from the reserve.
   const mode = picked ?? (online && wallet.raw > GAS_BUFFER ? 'pay' : online && !(spendable && spendable > 0n) ? 'pay' : 'offline')
   const [to, setTo] = useState(prefill.to ?? '')

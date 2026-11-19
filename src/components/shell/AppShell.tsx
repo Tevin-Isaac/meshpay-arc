@@ -6,7 +6,7 @@ import { setConnectedWallet } from '@/lib/mine'
 import { onStorageFailure, useMeshState } from '@/lib/store'
 import { toast } from 'sonner'
 import { ErrorBoundary } from '../ErrorBoundary'
-import { useChatEngine, usePurgeEngine, useStandingRunner } from '@/hooks/useEngines'
+import { useDirectoryEngine, useChainSync, useChatEngine, usePurgeEngine, useStandingRunner } from '@/hooks/useEngines'
 import { Header } from '../Header'
 import { WalletTab } from '../tabs/WalletTab'
 import { ChatsTab } from '../tabs/ChatsTab'
@@ -31,6 +31,8 @@ export function AppShell() {
   const goTab = useCallback((t: TabName) => setTab(t), [])
   const ready = status === 'unlocked' || status === 'plain'
   useChatEngine(ready)
+  useChainSync(ready)
+  useDirectoryEngine(ready)
   usePurgeEngine(ready)
   useStandingRunner(ready)
 
