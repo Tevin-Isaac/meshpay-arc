@@ -46,7 +46,7 @@ The settlement contract is **MeshPayV2** on Arc Testnet (`0xd619b77bb8389a632800
 
 ### Other features
 
-Light and dark themes with a sun/moon button in the header and an Appearance row in Settings (System, Light, Dark). The choice is stored in `localStorage` under `wayamesh-theme` (`system`, `light` or `dark`), the key agreed with the wayamesh.xyz site (same origin), so a choice made on one applies to the other. System is the default and follows the device live. QR codes stay black on white in both themes.
+Light and dark themes with a sun/moon button in the header and an Appearance row in Settings that does the same one-tap flip. The choice is stored in `localStorage` under `wayamesh-theme` (`system`, `light` or `dark`), the key agreed with the wayamesh.xyz site (same origin), so a choice made on one applies to the other. System is the default and follows the device live. QR codes stay black on white in both themes.
 
 Also: Autopilot (recurring payments that sign inside your limits, with an audit log), mesh carrying of other people's payments and messages, spending limits, an optional Connect wallet button (web only) and a Circle onramp sandbox widget that works only while its small backend runs.
 
