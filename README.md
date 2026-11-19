@@ -15,7 +15,7 @@ The settlement contract is **MeshPayV2** on Arc Testnet (`0xd619b77bb8389a632800
 * **Offline reserve.** You pre-load USDC into the contract under your address. That balance backs your offline payments.
 * **Voucher.** An offline payment is an EIP-712 signed authorization: pay X USDC (plus a courier fee) to address Y, valid until time T, nonce N. Signing happens on your device and needs no network.
 * **Funded check.** Because the reserve is on chain, whoever you pay can check that you are funded whenever they have any connection.
-* **QR hand-off.** The QR code is the signed payment (`mp2:` plus 178 bytes, base64url). Browsers cannot do Bluetooth, so the web wallet hands over by QR, copied text or the share sheet.
+* **Hand-off.** The signed payment (`mp2:` plus 178 bytes, base64url) is what travels, as a QR code on any device and over Bluetooth in the Android app (beta). Browsers cannot do Bluetooth, so the web wallet hands over by QR, copied text or the share sheet.
 * **Settlement.** Any phone or browser can submit a voucher. The contract checks signature, deadline, nonce and reserve, pays the recipient, and pays the courier fee to whoever submitted it. Duplicates are rejected by per-payer nonces.
 * **Courier fee.** Paid from the payer's reserve to whoever settles (a tip you can change in the app). It is what pays a phone to carry and settle other people's payments.
 * **24-hour validity.** Vouchers are signed for 24 hours and never longer than the withdraw delay, so a payer cannot sign, hand over and then drain the reserve before it settles. Receivers refuse vouchers that live longer or are about to expire.
