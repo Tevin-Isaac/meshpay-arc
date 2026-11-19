@@ -6,7 +6,7 @@ import { useAccount, usePublicClient, useReadContract, useSwitchChain, useWriteC
 import { toast } from 'sonner'
 import { ExternalLink, Landmark } from 'lucide-react'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
-import { CHAIN, MESHPAY_ABI, MESHPAY_ADDRESS, USDC_ADDRESS } from '@/lib/mesh'
+import { CHAIN, MESHPAY_ABI, MESHPAY_ADDRESS, USDC_ADDRESS, WITHDRAW_DELAY_SECONDS } from '@/lib/mesh'
 import { fmtExact, shortAddress } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
@@ -50,20 +50,100 @@ function BankCashOut() {
   )
 }
 
+/** Withdraw the offline reserve back to this wallet: request, wait the contract's delay, then finalize. */
+function WithdrawReserve() {
+  const device = useDevice()
+  const client = usePublicClient({ chainId: CHAIN.id })
+  const { spendable, reserve } = useSpendable()
+  const [amount, setAmount] = useState('')
+  const [busy, setBusy] = useState(false)
+  const req = useReadContract({
+    address: MESHPAY_ADDRESS,
+    abi: MESHPAY_ABI,
+    functionName: 'withdrawalRequest',
+    args: [device.address],
+    chainId: CHAIN.id,
+    query: { refetchInterval: 8000 },
+  })
+  const [pending, unlockAt] = req.data ?? [0n, 0n]
+  const now = BigInt(Math.floor(Date.now() / 1000))
+  const unlocked = pending > 0n && now >= unlockAt
+  const hours = Math.ceil(WITHDRAW_DELAY_SECONDS / 3600)
+
+  const act = async (fn: 'requestWithdraw' | 'cancelWithdraw' | 'finalizeWithdraw') => {
+    if (!client) return
+    setBusy(true)
+    try {
+      const wallet = createWalletClient({ account: getDeviceAccount(), chain: CHAIN, transport: http() })
+      const hash =
+        fn === 'requestWithdraw'
+          ? await wallet.writeContract({ address: MESHPAY_ADDRESS, abi: MESHPAY_ABI, functionName: fn, args: [parseUsdc(amount)] })
+          : await wallet.writeContract({ address: MESHPAY_ADDRESS, abi: MESHPAY_ABI, functionName: fn })
+      await client.waitForTransactionReceipt({ hash })
+      toast.success(fn === 'requestWithdraw' ? `Withdrawal requested. It unlocks in about ${hours} h.` : fn === 'cancelWithdraw' ? 'Withdrawal cancelled.' : 'Withdrawn to your wallet.')
+      setAmount('')
+      void req.refetch()
+      void reserve.refetch()
+    } catch (e) {
+      const msg = parseOnchainError(e)
+      if (msg) toast.error(msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-2xl p-4" style={{ border: '1px solid var(--border)' }}>
+      <div className="text-sm font-semibold">Withdraw reserve to this wallet</div>
+      <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+        Request, wait about {hours} h (the reserve stays spendable meanwhile), then finalize. The money lands in this wallet's own balance.
+      </p>
+      {pending > 0n ? (
+        <>
+          <div className="inner rounded-xl p-3 text-xs">
+            Requested {fmtExact(pending)} USDC.{' '}
+            {unlocked ? 'Ready to finalize.' : `Unlocks ${new Date(Number(unlockAt) * 1000).toLocaleString()}.`}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <GhostButton onClick={() => void act('cancelWithdraw')} disabled={busy}>
+              Cancel
+            </GhostButton>
+            <PrimaryButton onClick={() => void act('finalizeWithdraw')} disabled={!unlocked} loading={busy}>
+              Finalize
+            </PrimaryButton>
+          </div>
+        </>
+      ) : (
+        <>
+          <AmountInput
+            value={amount}
+            onChange={setAmount}
+            hint={spendable === null ? undefined : `Offline reserve ${fmtExact(spendable)} · Max`}
+            onHint={spendable && spendable > 0n ? () => setAmount(formatUsdc(spendable)) : undefined}
+          />
+          <PrimaryButton onClick={() => void act('requestWithdraw')} disabled={!amount} loading={busy}>
+            Request withdrawal
+          </PrimaryButton>
+        </>
+      )}
+    </div>
+  )
+}
+
 type Step = 'approve' | 'deposit' | 'cashout' | null
 
 /** Keep a little USDC on the device key so it can still pay a network fee. */
 const DEVICE_KEEP = 100_000n
 
-export function AddFundsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AddFundsSheet({ open, onClose, initialTab = 'add' }: { open: boolean; onClose: () => void; initialTab?: 'add' | 'cashout' }) {
   return (
     <Sheet open={open} onClose={onClose} title="Add funds">
-      <AddFundsBody />
+      <AddFundsBody initialTab={initialTab} />
     </Sheet>
   )
 }
 
-function AddFundsBody() {
+function AddFundsBody({ initialTab }: { initialTab: 'add' | 'cashout' }) {
   const device = useDevice()
   const { address, isConnected, chainId } = useAccount()
   const client = usePublicClient({ chainId: CHAIN.id })
@@ -73,7 +153,7 @@ function AddFundsBody() {
   const deviceUsdc = useDeviceUsdc()
   const { spendable, reserve } = useSpendable()
   const { settle } = useSettle()
-  const [tab, setTab] = useState<'add' | 'cashout'>('add')
+  const [tab, setTab] = useState<'add' | 'cashout'>(initialTab)
   const [amount, setAmount] = useState('')
   const [dest, setDest] = useState('')
   const [step, setStep] = useState<Step>(null)
@@ -310,7 +390,7 @@ function AddFundsBody() {
       ) : (
         <>
           <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-            Send your offline reserve to an exchange, an off-ramp deposit address or another wallet. Needs a connection and a little USDC for the network fee.
+            Send your offline reserve to an exchange, an off-ramp deposit address or another wallet. For M-Pesa use the M-Pesa row in Settings. Needs a connection and a little USDC for the network fee.
           </p>
           {!online ? (
             <div className="inner rounded-2xl p-4 text-sm" style={{ color: 'var(--ink-2)' }}>
@@ -336,6 +416,7 @@ function AddFundsBody() {
               <PrimaryButton onClick={() => void cashOut()} loading={busy} disabled={!amount}>
                 {busy ? stepLabel : 'Cash out'}
               </PrimaryButton>
+              <WithdrawReserve />
             </>
           )}
         </>

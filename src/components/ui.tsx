@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import { Loader2, X } from 'lucide-react'
 
@@ -14,6 +14,14 @@ export function Sheet({
   children: ReactNode
 }) {
   const controls = useDragControls()
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
   return (
     <AnimatePresence>
       {open && (
@@ -28,7 +36,7 @@ export function Sheet({
           <motion.section
             role="dialog"
             aria-label={title}
-            className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl"
+            className="relative flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl"
             style={{
               background: 'var(--sheet-bg)',
               backdropFilter: 'blur(40px) saturate(200%)',
@@ -48,11 +56,11 @@ export function Sheet({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="h-1" style={{ background: 'var(--spectral)' }} />
-            <div className="flex cursor-grab touch-none justify-center pb-1 pt-3" onPointerDown={(e) => controls.start(e)} aria-hidden="true">
+            <div className="h-1 shrink-0" style={{ background: 'var(--spectral)' }} />
+            <div className="flex shrink-0 cursor-grab touch-none justify-center pb-1 pt-3" onPointerDown={(e) => controls.start(e)} aria-hidden="true">
               <div className="h-1.5 w-12 rounded-full" style={{ background: "var(--grab)" }} />
             </div>
-            <div className="flex items-center justify-between px-5 pt-2">
+            <div className="flex shrink-0 items-center justify-between px-5 pt-2">
               <h2 className="display text-xl font-bold" style={{ color: 'var(--ink)' }}>
                 {title}
               </h2>
@@ -65,7 +73,7 @@ export function Sheet({
                 <X className="size-5" />
               </button>
             </div>
-            <div className="px-5 pb-20 pt-2">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">{children}</div>
           </motion.section>
         </motion.div>
       )}
@@ -77,6 +85,7 @@ export function PrimaryButton({
   loading,
   children,
   className = '',
+  style,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean }) {
   return (
@@ -84,7 +93,7 @@ export function PrimaryButton({
       {...rest}
       disabled={rest.disabled || loading}
       className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
-      style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
+      style={{ background: 'var(--accent)', color: 'var(--on-accent)', ...style }}
     >
       {loading && <Loader2 className="size-4 animate-spin" />}
       {children}
@@ -92,12 +101,12 @@ export function PrimaryButton({
   )
 }
 
-export function GhostButton({ children, className = '', ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function GhostButton({ children, className = '', style, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...rest}
       className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-colors disabled:opacity-40 ${className}`}
-      style={{ background: 'var(--surface-muted)', color: 'var(--ink)', border: '1px solid var(--border)' }}
+      style={{ background: 'var(--surface-muted)', color: 'var(--ink)', border: '1px solid var(--border)', ...style }}
     >
       {children}
     </button>

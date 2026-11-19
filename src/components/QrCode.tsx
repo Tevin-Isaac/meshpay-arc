@@ -24,7 +24,7 @@ export function QrCode({ value, label }: { value: string; label: string }) {
   }, [value])
 
   return (
-    <div className="mx-auto aspect-square w-full max-w-[280px] rounded-3xl bg-white p-3 shadow-sm" style={{ border: '1px solid var(--border)' }}>
+    <div className="mx-auto aspect-square w-full max-w-[min(240px,45dvh)] rounded-3xl bg-white p-3 shadow-sm" style={{ border: '1px solid var(--border)' }}>
       {src ? (
         <img src={src} alt={label} className="size-full" />
       ) : (

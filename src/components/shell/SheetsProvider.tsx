@@ -44,7 +44,7 @@ export function SheetsProvider({ children, onTab }: { children: ReactNode; onTab
           setSheet('send')
         }}
       />
-      <AddFundsSheet open={sheet === 'add'} onClose={close} />
+      <AddFundsSheet open={sheet === 'add' || sheet === 'cashout'} onClose={close} initialTab={sheet === 'cashout' ? 'cashout' : 'add'} />
       <BuySheet open={sheet === 'buy'} onClose={close} />
       <MpesaSheet open={sheet === 'mpesa'} onClose={close} />
       <LimitsSheet open={sheet === 'limits'} onClose={close} />

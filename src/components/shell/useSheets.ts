@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { StoredItem } from '@/lib/store'
 import type { SendPrefill } from '../SendSheet'
 
-export type SheetName = 'send' | 'receive' | 'scan' | 'add' | 'buy' | 'mpesa' | 'limits' | 'security' | 'agent' | 'about' | null
+export type SheetName = 'send' | 'receive' | 'scan' | 'add' | 'cashout' | 'buy' | 'mpesa' | 'limits' | 'security' | 'agent' | 'about' | null
 
 export type TabName = 'wallet' | 'chats' | 'history' | 'mesh' | 'settings'
 
