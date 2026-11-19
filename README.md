@@ -2,7 +2,7 @@
 
 **Pay in USDC, even offline.** WayaMesh is a self-custody wallet that signs payments with no internet, hands them over by QR code, and settles them on [Arc](https://arc.network) when any phone gets a connection.
 
-This repo is the **WayaMesh web wallet and the protocol reference implementation**, built with [Arc Studio](https://studio.arc.io). It is the web wallet served at **[wayamesh.xyz/app](https://wayamesh.xyz/app)**, and the reference that the Android app in [Tevin-Isaac/wayamesh-mobile](https://github.com/Tevin-Isaac/wayamesh-mobile) follows: the same payment format, chat protocol and test vectors (`docs/PORTING-TO-WAYAMESH-MOBILE.md`), and the same seed phrase gives the same address on both.
+This repo is the **WayaMesh web wallet and the protocol reference implementation**. It is the web wallet served at **[wayamesh.xyz/app](https://wayamesh.xyz/app)**, and the reference that the Android app in [Tevin-Isaac/wayamesh-mobile](https://github.com/Tevin-Isaac/wayamesh-mobile) follows: the same payment format, chat protocol and test vectors (`docs/PORTING-TO-WAYAMESH-MOBILE.md`), and the same seed phrase gives the same address on both.
 
 > **Testnet only.** WayaMesh runs on **Arc Testnet** with test USDC. Arc mainnet is not live, so nothing here holds real money. Get free test USDC at [faucet.circle.com](https://faucet.circle.com) (choose *Arc Testnet*). Read [docs/SECURITY.md](docs/SECURITY.md) before anything else.
 
