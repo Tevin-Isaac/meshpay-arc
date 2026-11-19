@@ -40,6 +40,7 @@ export const MESHPAY_ABI = parseAbi([
   'function settle(Payment p, bytes signature)',
   'function settleBatch(Payment[] ps, bytes[] sigs) returns (uint8[])',
   'function WITHDRAW_DELAY() view returns (uint256)',
+  'function withdrawalRequest(address) view returns (uint256 amount, uint256 unlockAt)',
   'event Settled(address indexed from, address indexed to, bytes32 indexed ref, uint256 nonce, uint256 amount, uint256 fee, address relayer)',
   'event Rejected(address indexed from, uint256 nonce, uint8 code)',
 ])
@@ -115,6 +116,16 @@ export async function isSignatureValid(v: Voucher): Promise<boolean> {
   }
 }
 
+const HALF_N = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0n
+
+/** The contract only accepts one canonical form of a signature. Anything else would be stuck unsettled. */
+export function isCanonicalSignature(sig: Hex): boolean {
+  if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return false
+  const v = parseInt(sig.slice(130, 132), 16)
+  const s = BigInt(`0x${sig.slice(66, 130)}`)
+  return (v === 27 || v === 28) && s > 0n && s <= HALF_N
+}
+
 export function randomRef(): Hex {
   const bytes = new Uint8Array(32)
   crypto.getRandomValues(bytes)
@@ -176,6 +187,7 @@ export function decodeVoucher(text: string): Voucher {
   const bytes = fromB64Url(raw.slice(VOUCHER_PREFIX.length))
   if (bytes.length !== VOUCHER_BYTES || bytes[0] !== 2) throw new Error('Unsupported or damaged payment code.')
   const at = (from: number, to: number) => bytesToHex(bytes.slice(from, to))
+  if (!isCanonicalSignature(at(113, 178))) throw new Error('This payment code has a malformed signature and could never settle.')
   return {
     payment: {
       from: getAddress(at(1, 21)),
@@ -211,6 +223,12 @@ export function encodeRequest(r: PaymentRequest): string {
   return `${REQUEST_PREFIX}${r.address}${query ? `?${query}` : ''}`
 }
 
+/** Strips control and direction-changing characters so text from a stranger cannot disguise itself. */
+export function cleanText(input: string, max: number): string {
+  // eslint-disable-next-line no-control-regex
+  return input.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '').trim().slice(0, max)
+}
+
 export function parseRequest(text: string): PaymentRequest | null {
   const raw = text.trim()
   if (!raw.startsWith(REQUEST_PREFIX)) return null
@@ -218,11 +236,13 @@ export function parseRequest(text: string): PaymentRequest | null {
   if (!isAddress(addr)) return null
   const q = new URLSearchParams(query ?? '')
   const ref = q.get('ref')
+  const amount = q.get('amount')
+  const note = q.get('note')
   return {
     address: getAddress(addr),
-    amount: q.get('amount') ?? undefined,
+    amount: amount && /^\d{1,12}(\.\d{1,6})?$/.test(amount) ? amount : undefined,
     ref: ref && /^0x[0-9a-fA-F]{64}$/.test(ref) ? (ref as Hex) : undefined,
-    note: q.get('note') ?? undefined,
+    note: note ? cleanText(note, 80) : undefined,
   }
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { isAddress, getAddress } from 'viem'
+import { unsafeRecipient } from '@/lib/guard'
 import { toast } from 'sonner'
 import { Bot, Pause, Play, Trash2 } from 'lucide-react'
 import { parseUsdc } from '@/onchain-money'
@@ -28,6 +29,8 @@ function AgentBody() {
 
   const add = () => {
     if (!isAddress(to)) return toast.error('Enter a valid address, or pick a contact.')
+    const unsafe = unsafeRecipient(to)
+    if (unsafe) return toast.error(unsafe)
     let raw: bigint
     try {
       raw = parseUsdc(amount || '0')

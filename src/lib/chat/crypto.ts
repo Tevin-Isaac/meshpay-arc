@@ -2,10 +2,10 @@ import { schnorr, secp256k1 } from '@noble/curves/secp256k1'
 import { xchacha20poly1305 } from '@noble/ciphers/chacha'
 import { hkdf } from '@noble/hashes/hkdf'
 import { sha256 } from '@noble/hashes/sha256'
-import { bytesToHex, getAddress, hexToBytes, recoverMessageAddress, recoverPublicKey, hashMessage, type Address, type Hex } from 'viem'
+import { bytesToHex, getAddress, hexToBytes, isAddress, recoverMessageAddress, recoverPublicKey, hashMessage, type Address, type Hex } from 'viem'
 import { publicKeyToAddress } from 'viem/utils'
 import type { privateKeyToAccount } from 'viem/accounts'
-import { fromB64Url, toB64Url } from '../mesh'
+import { cleanText, fromB64Url, toB64Url } from '../mesh'
 
 /**
  * End-to-end encryption for chat. The sender seals each message to the recipient's public key
@@ -97,7 +97,7 @@ export function decodeCard(text: string): ContactCard {
   // The address must belong to the public key, otherwise messages could be redirected.
   const derived = publicKeyToAddress(`0x${secp256k1.ProjectivePoint.fromHex(b.slice(20, 53)).toHex(false)}`)
   if (derived !== address) throw new Error('The contact card does not match its address.')
-  return { address, pubkey, name: td.decode(b.slice(54, 54 + b[53])) }
+  return { address, pubkey, name: cleanText(td.decode(b.slice(54, 54 + b[53])), 24) }
 }
 
 // ---- message envelope ----
@@ -158,8 +158,45 @@ export function packInner(inner: Inner): Uint8Array {
   return te.encode(JSON.stringify(inner))
 }
 
+const HEX_ID = /^[0-9a-f]{24}$/
+const HEX_REF = /^0x[0-9a-fA-F]{64}$/
+const SIG = /^0x[0-9a-fA-F]{130}$/
+const AMOUNT = /^\d{1,12}(\.\d{1,6})?$/
+
+/** Everything a stranger controls is checked here, once, so nothing downstream can be crashed by it. */
+function validateInner(value: unknown): Inner {
+  if (!value || typeof value !== 'object') throw new Error('bad message')
+  const m = value as Record<string, unknown>
+  const now = Math.floor(Date.now() / 1000)
+  const bad = (why: string) => new Error(`bad message: ${why}`)
+  if (m.v !== 1) throw bad('version')
+  if (typeof m.i !== 'string' || !HEX_ID.test(m.i)) throw bad('id')
+  if (typeof m.t !== 'number' || !Number.isInteger(m.t) || m.t > now + 86_400 || m.t < now - 90 * 86_400) throw bad('time')
+  if (typeof m.f !== 'string' || !isAddress(m.f) || typeof m.o !== 'string' || !isAddress(m.o)) throw bad('address')
+  if (m.k !== 'text' && m.k !== 'payment' && m.k !== 'request') throw bad('kind')
+  if (m.x !== undefined && (typeof m.x !== 'string' || m.x.length > 500)) throw bad('text')
+  if (m.a !== undefined && (typeof m.a !== 'string' || !AMOUNT.test(m.a))) throw bad('amount')
+  if (m.r !== undefined && (typeof m.r !== 'string' || !HEX_REF.test(m.r))) throw bad('ref')
+  if (m.c !== undefined && (typeof m.c !== 'string' || m.c.length > 400 || !m.c.startsWith('mp2:'))) throw bad('code')
+  if (typeof m.s !== 'string' || !SIG.test(m.s)) throw bad('signature')
+  return {
+    v: 1,
+    i: m.i,
+    t: m.t,
+    f: m.f,
+    o: m.o,
+    k: m.k,
+    ...(m.x !== undefined ? { x: m.x } : {}),
+    ...(m.a !== undefined ? { a: m.a } : {}),
+    ...(m.r !== undefined ? { r: m.r as Hex } : {}),
+    ...(m.c !== undefined ? { c: m.c } : {}),
+    s: m.s as Hex,
+  }
+}
+
 export function unpackInner(bytes: Uint8Array): Inner {
-  return JSON.parse(td.decode(bytes)) as Inner
+  if (bytes.length > 4096) throw new Error('bad message: too large')
+  return validateInner(JSON.parse(td.decode(bytes)))
 }
 
 /** Offline handoff code: the recipient's relay address followed by the sealed box. */
@@ -222,6 +259,9 @@ export function buildRelayEvent(recipientX: string, box: Uint8Array): RelayEvent
 
 export function relayEventValid(e: RelayEvent): boolean {
   try {
+    const now = Math.floor(Date.now() / 1000)
+    if (typeof e.content !== 'string' || e.content.length > 12_000) return false
+    if (typeof e.created_at !== 'number' || Math.abs(e.created_at - now) > 2 * 86_400) return false
     const id = bytesToHex(sha256(te.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content])))).slice(2)
     return id === e.id && schnorr.verify(hexToBytes(`0x${e.sig}`), hexToBytes(`0x${e.id}`), hexToBytes(`0x${e.pubkey}`))
   } catch {

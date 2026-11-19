@@ -28,11 +28,13 @@ self.addEventListener('fetch', (event) => {
   const sameOrigin = url.origin === self.location.origin
   const isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com'
   if (!sameOrigin && !isFont) return
+  // Never cache API calls or anything that is not a plain page asset.
+  if (sameOrigin && (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/'))) return
 
   event.respondWith(
     fetch(req)
       .then((res) => {
-        if (res && (res.ok || res.type === 'opaque')) {
+        if (res && res.ok && (res.type === 'basic' || isFont)) {
           const copy = res.clone()
           caches.open(CACHE).then((cache) => cache.put(req, copy))
         }

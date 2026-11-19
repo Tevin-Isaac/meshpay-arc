@@ -23,7 +23,10 @@ export function useChatEngine(active: boolean) {
     const urls = relaysKey.split(',').filter(Boolean)
     const since = Math.max(0, (getState().relaySince || Math.floor(Date.now() / 1000) - 7 * 86400) - 600)
     startRelays(urls, xonlyOf(myPubkey()), since, (event) => {
-      void handleRelayContent(event.content).then(() => setRelaySince(event.created_at))
+      void handleRelayContent(event.content).then((res) => {
+        // Only move the cursor for real messages, and never past now, so a forged timestamp cannot hide future mail.
+        if (res === 'delivered' || res === 'duplicate') setRelaySince(Math.min(event.created_at, Math.floor(Date.now() / 1000)))
+      })
     })
     const timer = setInterval(() => void flushOutbox(), 5000)
     return () => {
@@ -56,27 +59,34 @@ export function useStandingRunner(active: boolean) {
         for (const s of getState().standing) {
           if (!s.active || s.next > now) continue
           const update = (patch: Partial<Standing>) => setStanding(getState().standing.map((x) => (x.id === s.id ? { ...x, ...patch } : x)))
-          const raw = parseUsdc(s.amount)
-          if (s.until && now > s.until) {
-            update({ active: false })
-            addAudit(`Standing payment to ${s.name || s.to} ended: expiry reached.`, 'warn')
-            continue
-          }
-          const total = BigInt(s.paidTotal ?? '0')
-          if (s.maxTotal && total + raw > parseUsdc(s.maxTotal)) {
-            update({ active: false })
-            addAudit(`Standing payment to ${s.name || s.to} stopped: total cap reached.`, 'warn')
-            continue
-          }
           try {
+            const raw = parseUsdc(s.amount)
+            if (s.until && now > s.until) {
+              update({ active: false })
+              addAudit(`Standing payment to ${s.name || s.to} ended: expiry reached.`, 'warn')
+              continue
+            }
+            const total = BigInt(s.paidTotal ?? '0')
+            if (s.maxTotal && total + raw > parseUsdc(s.maxTotal)) {
+              update({ active: false })
+              addAudit(`Standing payment to ${s.name || s.to} stopped: total cap reached.`, 'warn')
+              continue
+            }
             const { item, code } = await createSignedPayment(s.to, raw, { spendable: spendableNow() })
+            // Move the schedule forward as soon as the payment exists, so a failed delivery can never sign it twice.
             let next = s.next + PERIOD[s.every]
             while (next <= now) next += PERIOD[s.every]
             update({ next, paid: s.paid + 1, paidTotal: (total + raw).toString() })
             addAudit(`Signed ${fmtUsdc(raw)} USDC to ${s.name || s.to} (${s.every}).`, 'good')
             toast.success(`Standing payment signed: ${fmtUsdc(raw)} USDC to ${s.name || s.to}. It settles when any phone is online.`)
             const contact = getState().contacts.find((c) => c.address.toLowerCase() === s.to.toLowerCase())
-            if (contact) await sendChat(contact, { k: 'payment', a: s.amount, x: s.note, c: code }, item.id)
+            if (contact) {
+              try {
+                await sendChat(contact, { k: 'payment', a: s.amount, x: s.note, c: code }, item.id)
+              } catch {
+                addAudit(`Payment to ${s.name || s.to} is signed and held. Chat delivery will be retried by hand.`, 'warn')
+              }
+            }
           } catch (e) {
             update({ next: now + 3_600_000 })
             const why = e instanceof PaymentBlocked || e instanceof Error ? e.message : 'Could not sign.'

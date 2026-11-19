@@ -1,6 +1,7 @@
 import type { Address, Hex } from 'viem'
 import { VOUCHER_TTL_SECONDS, ZERO_REF, encodeVoucher, randomNonce, signPayment, type Payment } from './mesh'
 import { makeItem, toVoucher } from './items'
+import { unsafeRecipient } from './guard'
 import { checkPolicy } from './policy'
 import { addItem, getDeviceAccount, getState, type StoredItem } from './store'
 
@@ -19,7 +20,16 @@ interface Options {
  * Builds and signs a payment on the device. Needs no network: the spending
  * envelope is checked locally, then the device key seals the payment.
  */
-export async function createSignedPayment(to: Address, amount: bigint, opts: Options = {}): Promise<{ item: StoredItem; code: string }> {
+let queue: Promise<unknown> = Promise.resolve()
+
+/** One payment is signed at a time, so two taps at once cannot both pass the limit check. */
+export function createSignedPayment(to: Address, amount: bigint, opts: Options = {}): Promise<{ item: StoredItem; code: string }> {
+  const run = queue.then(() => signNow(to, amount, opts))
+  queue = run.catch(() => undefined)
+  return run
+}
+
+async function signNow(to: Address, amount: bigint, opts: Options): Promise<{ item: StoredItem; code: string }> {
   const state = getState()
   const account = getDeviceAccount()
   const fee = opts.fee ?? 0n
@@ -28,10 +38,10 @@ export async function createSignedPayment(to: Address, amount: bigint, opts: Opt
   if (opts.spendable !== undefined && opts.spendable !== null && amount + fee > opts.spendable) {
     throw new PaymentBlocked('That is more than your offline balance. Add funds first.')
   }
-  if (opts.kind !== 'cashout') {
-    const blocked = checkPolicy(amount + fee, state.policy, state.items)
-    if (blocked) throw new PaymentBlocked(blocked)
-  }
+  const unsafe = unsafeRecipient(to)
+  if (unsafe) throw new PaymentBlocked(unsafe)
+  const blocked = checkPolicy(amount + fee, state.policy, state.items)
+  if (blocked) throw new PaymentBlocked(blocked)
 
   const payment: Payment = {
     from: account.address,
@@ -44,6 +54,6 @@ export async function createSignedPayment(to: Address, amount: bigint, opts: Opt
   }
   const signature = await signPayment(account, payment)
   const item = { ...makeItem({ payment, signature }, 'signed'), kind: opts.kind }
-  addItem(item)
+  if (!addItem(item)) throw new PaymentBlocked('Too many payments are waiting to settle. Settle some first.')
   return { item, code: encodeVoucher(toVoucher(item)) }
 }

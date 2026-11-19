@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Eye, KeyRound, ShieldCheck } from 'lucide-react'
 import type { Hex } from 'viem'
-import { createWallet } from '@/lib/store'
+import { createWallet, readBackup, restoreWallet } from '@/lib/store'
+import { groupAddress } from '@/lib/guard'
 import { recoverKey } from '@/lib/guardians'
 import { pinProblem } from '@/lib/vault'
 import { isValidMnemonic, keyFromMnemonic, newMnemonic, normalizeMnemonic } from '@/lib/wallet'
@@ -26,6 +27,7 @@ export function Onboarding() {
   const [step, setStep] = useState<Step>('welcome')
   const [mnemonic, setMnemonic] = useState('')
   const [recovered, setRecovered] = useState<Hex | null>(null)
+  const [restored, setRestored] = useState<Awaited<ReturnType<typeof readBackup>> | null>(null)
   const [from, setFrom] = useState<'create' | 'import'>('create')
 
   if (step === 'welcome') {
@@ -74,17 +76,25 @@ export function Onboarding() {
         onNext={(m) => {
           setMnemonic(m)
           setRecovered(null)
+          setRestored(null)
           setStep('pin')
         }}
         onShards={(key) => {
           setMnemonic('')
           setRecovered(key)
+          setRestored(null)
+          setStep('pin')
+        }}
+        onBackup={(r) => {
+          setMnemonic('')
+          setRecovered(null)
+          setRestored(r)
           setStep('pin')
         }}
       />
     )
   }
-  return <SetPin mnemonic={mnemonic} recovered={recovered} onBack={() => setStep(from === 'create' ? 'confirm' : 'import')} />
+  return <SetPin mnemonic={mnemonic} recovered={recovered} restored={restored} onBack={() => setStep(from === 'create' ? 'confirm' : 'import')} />
 }
 
 function Phrase({ mnemonic, onBack, onNext }: { mnemonic: string; onBack: () => void; onNext: () => void }) {
@@ -160,78 +170,131 @@ function Confirm({ mnemonic, onBack, onNext }: { mnemonic: string; onBack: () =>
   )
 }
 
-function ImportPhrase({ onBack, onNext, onShards }: { onBack: () => void; onNext: (mnemonic: string) => void; onShards: (key: Hex) => void }) {
-  const [mode, setMode] = useState<'phrase' | 'shards'>('phrase')
+function ImportPhrase({
+  onBack,
+  onNext,
+  onShards,
+  onBackup,
+}: {
+  onBack: () => void
+  onNext: (mnemonic: string) => void
+  onShards: (key: Hex) => void
+  onBackup: (restored: Awaited<ReturnType<typeof readBackup>>) => void
+}) {
+  const [mode, setMode] = useState<'phrase' | 'shards' | 'backup'>('phrase')
   const [text, setText] = useState('')
+  const [pass, setPass] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [found, setFound] = useState<{ key: Hex; address: string } | null>(null)
   const valid = isValidMnemonic(text)
 
-  const useShards = () => {
+  const findShards = () => {
     try {
       const pieces = text
         .split(/\n+/)
         .map((l) => l.trim())
         .filter(Boolean)
-      onShards(recoverKey(pieces).key)
+      setFound(recoverKey(pieces))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not use those shards.')
     }
   }
 
+  const openBackup = async () => {
+    setBusy(true)
+    try {
+      onBackup(await readBackup(text.trim(), pass))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not open that backup.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (found) {
+    return (
+      <AuthShell title="Is this your wallet?" footer={<BackLink onClick={() => setFound(null)} />}>
+        <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
+          These shards rebuild the wallet below. Only continue if you recognise it.
+        </p>
+        <div className="inner mono break-words rounded-2xl p-3 text-xs leading-relaxed">{groupAddress(found.address)}</div>
+        <PrimaryButton onClick={() => onShards(found.key)}>Yes, this is mine</PrimaryButton>
+      </AuthShell>
+    )
+  }
+
+  const labels = { phrase: 'Recovery phrase', shards: 'Guardian shards', backup: 'Backup file' } as const
+
   return (
     <AuthShell title="Restore your wallet" footer={<BackLink onClick={onBack} />}>
-      <div className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ background: 'var(--surface-muted)' }}>
-        {(['phrase', 'shards'] as const).map((m) => (
+      <div className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ background: 'var(--surface-muted)' }}>
+        {(['phrase', 'shards', 'backup'] as const).map((m) => (
           <button
             key={m}
             onClick={() => {
               setMode(m)
               setText('')
+              setPass('')
             }}
-            className="min-h-10 rounded-xl text-xs font-semibold"
-            style={{
-              background: mode === m ? 'var(--surface-strong)' : 'transparent',
-              color: mode === m ? 'var(--ink)' : 'var(--muted)',
-            }}
+            className="min-h-10 rounded-xl text-[11px] font-semibold"
+            style={{ background: mode === m ? 'var(--surface-strong)' : 'transparent', color: mode === m ? 'var(--ink)' : 'var(--muted)' }}
           >
-            {m === 'phrase' ? 'Recovery phrase' : 'Guardian shards'}
+            {labels[m]}
           </button>
         ))}
       </div>
       <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-        {mode === 'phrase'
-          ? 'Enter your 12 or 24 word recovery phrase. It works with the WayaMesh mobile app too.'
-          : 'Paste any two of your three guardian shards, one per line.'}
+        {mode === 'phrase' && 'Enter your 12 or 24 word recovery phrase. It works with the WayaMesh mobile app too.'}
+        {mode === 'shards' && 'Paste any two of your three guardian shards, one per line.'}
+        {mode === 'backup' && 'Paste the contents of your backup file and enter the passphrase you chose for it.'}
       </p>
       <textarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => setText(e.target.value.slice(0, 8_000_000))}
         rows={mode === 'phrase' ? 4 : 5}
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
-        aria-label={mode === 'phrase' ? 'Recovery phrase' : 'Guardian shards'}
-        placeholder={mode === 'phrase' ? 'word1 word2 word3 …' : '{"v":1,"i":1,…}'}
+        aria-label={labels[mode]}
+        placeholder={mode === 'phrase' ? 'word1 word2 word3 …' : mode === 'shards' ? '{"v":1,"i":1,…}' : '{"kind":"wayamesh-backup",…}'}
         className="inner mono w-full resize-none rounded-2xl p-3 text-sm outline-none"
       />
+      {mode === 'backup' && (
+        <input
+          type="password"
+          value={pass}
+          onChange={(e) => setPass(e.target.value.slice(0, 200))}
+          autoComplete="off"
+          placeholder="Backup passphrase"
+          aria-label="Backup passphrase"
+          className="inner min-h-12 w-full rounded-2xl px-4 text-base outline-none"
+        />
+      )}
       {mode === 'phrase' && text.trim().length > 0 && !valid && (
         <p className="text-xs" style={{ color: 'var(--warn)' }}>
           That is not a valid phrase yet. Check the spelling and the number of words.
         </p>
       )}
-      {mode === 'phrase' ? (
+      {mode === 'phrase' && (
         <PrimaryButton onClick={() => onNext(normalizeMnemonic(text))} disabled={!valid}>
           Continue
         </PrimaryButton>
-      ) : (
-        <PrimaryButton onClick={useShards} disabled={!text.trim()}>
+      )}
+      {mode === 'shards' && (
+        <PrimaryButton onClick={findShards} disabled={!text.trim()}>
           Rebuild my wallet
+        </PrimaryButton>
+      )}
+      {mode === 'backup' && (
+        <PrimaryButton onClick={() => void openBackup()} loading={busy} disabled={!text.trim() || !pass}>
+          Open backup
         </PrimaryButton>
       )}
     </AuthShell>
   )
 }
 
-function SetPin({ mnemonic, recovered, onBack }: { mnemonic: string; recovered: Hex | null; onBack: () => void }) {
+function SetPin({ mnemonic, recovered, restored, onBack }: { mnemonic: string; recovered: Hex | null; restored: Awaited<ReturnType<typeof readBackup>> | null; onBack: () => void }) {
   const [pin, setPin] = useState('')
   const [again, setAgain] = useState('')
   const [busy, setBusy] = useState(false)
@@ -241,7 +304,7 @@ function SetPin({ mnemonic, recovered, onBack }: { mnemonic: string; recovered: 
     if (pin !== again) return toast.error('The two PINs do not match.')
     setBusy(true)
     try {
-      await (recovered ? createWallet(null, recovered, pin) : createWallet(mnemonic, keyFromMnemonic(mnemonic), pin))
+      await (restored ? restoreWallet(restored, pin) : recovered ? createWallet(null, recovered, pin) : createWallet(mnemonic, keyFromMnemonic(mnemonic), pin))
       toast.success('Wallet ready. Welcome to WayaMesh.')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not create the wallet.')

@@ -3,12 +3,14 @@ import type { Address, Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
   PBKDF2_ITERATIONS,
+  isPin,
   clearFailures,
   deriveKey,
   fromB64,
   lockoutRemaining,
   open,
   pinProblem,
+  passphraseProblem,
   randomBytes,
   recordFailure,
   seal,
@@ -66,6 +68,8 @@ export interface ChatMessage {
   voucherId?: string
   ts: number
   status: 'queued' | 'sent' | 'received'
+  /** For payments: the attached payment was checked on this device and pays me (or I signed it). */
+  verified?: boolean
   /** Sealed offline code for an outgoing message, so it can be handed over without a connection. */
   code?: string
 }
@@ -151,12 +155,44 @@ function emptyData(): Data {
 }
 
 function withDefaults(d: Partial<Data>): Data {
+  return sanitizeData(d)
+}
+
+export const CAPS = { items: 400, pendingItems: 150, messages: 2500, contacts: 300, requests: 40, audit: 100, carried: 200, invoices: 100, standing: 30 }
+
+const asArray = <T,>(v: unknown, max: number): T[] => (Array.isArray(v) ? (v.slice(0, max) as T[]) : [])
+const str = (v: unknown, fallback: string, max = 200): string => (typeof v === 'string' ? v.slice(0, max) : fallback)
+
+/** Makes sure whatever was decrypted or restored has the shape the app expects, so a bad backup cannot crash it. */
+export function sanitizeData(input: unknown): Data {
+  const d = (input && typeof input === 'object' ? input : {}) as Partial<Data>
   const base = emptyData()
-  return { ...base, ...d, settings: { ...base.settings, ...(d.settings ?? {}) } }
+  const s = (d.settings ?? {}) as Partial<Settings>
+  const relays = asArray<string>(s.relays, 8).filter((r) => typeof r === 'string' && /^wss:\/\/[\w.-]+(:\d+)?\/?$/.test(r))
+  return {
+    policy: { perTx: str(d.policy?.perTx, base.policy.perTx, 20), daily: str(d.policy?.daily, base.policy.daily, 20) },
+    items: asArray<StoredItem>(d.items, CAPS.items).filter((i) => i && typeof i.id === 'string' && typeof i.amount === 'string'),
+    reserveCache:
+      d.reserveCache && typeof d.reserveCache.raw === 'string' && typeof d.reserveCache.at === 'number' ? d.reserveCache : null,
+    contacts: asArray<Contact>(d.contacts, CAPS.contacts).filter((c) => c && typeof c.address === 'string' && typeof c.pubkey === 'string'),
+    messages: asArray<ChatMessage>(d.messages, CAPS.messages).filter((m) => m && typeof m.id === 'string' && typeof m.peer === 'string'),
+    carried: asArray<Carried>(d.carried, CAPS.carried),
+    standing: asArray<Standing>(d.standing, CAPS.standing),
+    invoices: asArray<Invoice>(d.invoices, CAPS.invoices),
+    settings: {
+      autoLockMinutes: typeof s.autoLockMinutes === 'number' ? s.autoLockMinutes : base.settings.autoLockMinutes,
+      hideBalances: !!s.hideBalances,
+      acceptLimit: str(s.acceptLimit, base.settings.acceptLimit, 20),
+      tip: str(s.tip, base.settings.tip, 20),
+      relays: relays.length ? relays : base.settings.relays,
+    },
+    relaySince: typeof d.relaySince === 'number' ? d.relaySince : 0,
+    audit: asArray<AuditEntry>(d.audit, CAPS.audit),
+  }
 }
 
 type Plain = { v: 2; mode: 'plain'; key: Hex; mnemonic?: string; data: Data }
-type Sealed = { v: 2; mode: 'sealed'; address: Address; salt: string; iters: number; iv: string; ct: string }
+type Sealed = { v: 2; mode: 'sealed'; kind?: 'pin' | 'pass'; address: Address; salt: string; iters: number; iv: string; ct: string }
 type Persisted = Plain | Sealed
 
 const KEY = 'meshpay.v2'
@@ -173,8 +209,13 @@ interface Runtime {
   data: Data
 }
 
-let sealedMeta: { salt: string; iters: number } | null = null
+let sealedMeta: { salt: string; iters: number; kind: 'pin' | 'pass' } | null = null
 let cryptoKey: CryptoKey | null = null
+
+/** A stored or imported iteration count outside this range is refused, so a crafted file cannot hang the device. */
+function boundedIters(n: unknown): number {
+  return typeof n === 'number' && Number.isFinite(n) && n >= 100_000 && n <= 2_000_000 ? Math.floor(n) : PBKDF2_ITERATIONS
+}
 
 function readPersisted(): Persisted | null {
   try {
@@ -197,7 +238,7 @@ function readPersisted(): Persisted | null {
 function init(): Runtime {
   const saved = readPersisted()
   if (saved?.mode === 'sealed') {
-    sealedMeta = { salt: saved.salt, iters: saved.iters }
+    sealedMeta = { salt: saved.salt, iters: boundedIters(saved.iters), kind: saved.kind ?? 'pin' }
     return { status: 'locked', address: saved.address, key: null, mnemonic: null, data: emptyData() }
   }
   if (saved?.mode === 'plain') {
@@ -217,7 +258,7 @@ let snapshot = makeSnapshot()
 const listeners = new Set<() => void>()
 
 function makeSnapshot() {
-  return { status: rt.status, address: rt.address, ...rt.data }
+  return { status: rt.status, address: rt.address, secretKind: sealedMeta?.kind ?? ('pin'), ...rt.data }
 }
 
 function emit() {
@@ -225,7 +266,17 @@ function emit() {
   listeners.forEach((l) => l())
 }
 
-let saving = Promise.resolve()
+let saving: Promise<void> = Promise.resolve()
+let storageFailed = false
+const storageListeners = new Set<() => void>()
+
+/** True when the device could not save the latest changes (storage full or blocked). */
+export function onStorageFailure(l: () => void) {
+  storageListeners.add(l)
+  return () => {
+    storageListeners.delete(l)
+  }
+}
 
 function persist() {
   const { status, key, mnemonic, data, address } = rt
@@ -242,14 +293,19 @@ function persist() {
   const meta = sealedMeta
   if (!ck || !meta) return
   const body = JSON.stringify({ key, mnemonic, data })
-  saving = saving.then(async () => {
-    const sealedBox = await seal(ck, body, address)
-    try {
+  saving = saving
+    .then(async () => {
+      const sealedBox = await seal(ck, body, address)
       localStorage.setItem(KEY, JSON.stringify({ v: 2, mode: 'sealed', address, ...meta, ...sealedBox } satisfies Sealed))
-    } catch {
-      // keep working in memory
-    }
-  })
+      storageFailed = false
+    })
+    .catch(() => {
+      // Storage is full or blocked. Keep working in memory and tell the user once.
+      if (!storageFailed) {
+        storageFailed = true
+        storageListeners.forEach((l) => l())
+      }
+    })
 }
 
 persist()
@@ -293,6 +349,15 @@ export function getDeviceAccount() {
 
 // ---- PIN, lock and backup ----
 
+/** The old plaintext copy of the key must never outlive the sealed one. */
+function removeLegacy() {
+  try {
+    localStorage.removeItem(OLD_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 export async function setPin(pin: string): Promise<void> {
   const problem = pinProblem(pin)
   if (problem) throw new Error(problem)
@@ -300,43 +365,54 @@ export async function setPin(pin: string): Promise<void> {
   const salt = randomBytes(16)
   const ck = await deriveKey(pin, salt, PBKDF2_ITERATIONS)
   cryptoKey = ck
-  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS }
+  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS, kind: isPin(pin) ? 'pin' : 'pass' }
   rt = { ...rt, status: 'unlocked' }
   persist()
   await saving
+  removeLegacy()
   clearFailures()
   emit()
 }
 
 export type UnlockResult = { ok: true } | { ok: false; waitMs: number; reason: string }
 
+let unlocking = false
+
 export async function unlock(pin: string): Promise<UnlockResult> {
+  if (unlocking) return { ok: false, waitMs: 0, reason: 'One moment.' }
   const wait = lockoutRemaining()
   if (wait > 0) return { ok: false, waitMs: wait, reason: 'Too many tries.' }
-  const raw = localStorage.getItem(KEY)
-  const saved = raw ? (JSON.parse(raw) as Persisted) : null
-  if (!saved || saved.mode !== 'sealed') return { ok: false, waitMs: 0, reason: 'No PIN is set.' }
+  unlocking = true
   try {
-    const ck = await deriveKey(pin, fromB64(saved.salt), saved.iters)
-    const body = JSON.parse(await open(ck, saved.iv, saved.ct, saved.address)) as { key: Hex; mnemonic?: string | null; data: Data }
-    cryptoKey = ck
-    sealedMeta = { salt: saved.salt, iters: saved.iters }
-    rt = { status: 'unlocked', address: saved.address, key: body.key, mnemonic: body.mnemonic ?? null, data: withDefaults(body.data) }
-    clearFailures()
-    emit()
-    return { ok: true }
-  } catch {
-    return { ok: false, waitMs: recordFailure(), reason: 'Wrong PIN.' }
+    const saved = readPersisted()
+    if (!saved || saved.mode !== 'sealed') return { ok: false, waitMs: 0, reason: 'No PIN is set.' }
+    try {
+      const iters = boundedIters(saved.iters)
+      const ck = await deriveKey(pin, fromB64(saved.salt), iters)
+      const body = JSON.parse(await open(ck, saved.iv, saved.ct, saved.address)) as { key: Hex; mnemonic?: string | null; data: unknown }
+      cryptoKey = ck
+      sealedMeta = { salt: saved.salt, iters, kind: saved.kind ?? 'pin' }
+      rt = { status: 'unlocked', address: saved.address, key: body.key, mnemonic: body.mnemonic ?? null, data: sanitizeData(body.data) }
+      clearFailures()
+      emit()
+      return { ok: true }
+    } catch {
+      return { ok: false, waitMs: recordFailure(), reason: 'Wrong PIN.' }
+    }
+  } finally {
+    unlocking = false
   }
 }
 
 export function lock() {
   if (rt.status !== 'unlocked') return
-  void saving.then(() => {
+  const finish = () => {
     cryptoKey = null
     rt = { status: 'locked', address: rt.address, key: null, mnemonic: null, data: emptyData() }
     emit()
-  })
+  }
+  // Never stay unlocked because a save is stuck.
+  void saving.then(finish, finish)
 }
 
 export async function changePin(oldPin: string, newPin: string): Promise<boolean> {
@@ -346,20 +422,20 @@ export async function changePin(oldPin: string, newPin: string): Promise<boolean
   if (!(await revealKey(oldPin))) return false
   const salt = randomBytes(16)
   cryptoKey = await deriveKey(newPin, salt, PBKDF2_ITERATIONS)
-  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS }
+  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS, kind: isPin(newPin) ? 'pin' : 'pass' }
   persist()
   await saving
+  emit()
   return true
 }
 
 /** Returns the secrets after the PIN is checked again. Used for backups and the recovery phrase only. */
 export async function revealSecret(pin: string): Promise<{ key: Hex; mnemonic: string | null } | null> {
-  const raw = localStorage.getItem(KEY)
-  const saved = raw ? (JSON.parse(raw) as Persisted) : null
+  const saved = readPersisted()
   if (!saved || saved.mode !== 'sealed') return rt.key ? { key: rt.key, mnemonic: rt.mnemonic } : null
   if (lockoutRemaining() > 0) return null
   try {
-    const ck = await deriveKey(pin, fromB64(saved.salt), saved.iters)
+    const ck = await deriveKey(pin, fromB64(saved.salt), boundedIters(saved.iters))
     const body = JSON.parse(await open(ck, saved.iv, saved.ct, saved.address)) as { key: Hex; mnemonic?: string | null }
     clearFailures()
     return { key: body.key, mnemonic: body.mnemonic ?? null }
@@ -381,10 +457,11 @@ export async function createWallet(mnemonic: string | null, key: Hex, pin: strin
   const address = privateKeyToAccount(key).address
   const salt = randomBytes(16)
   cryptoKey = await deriveKey(pin, salt, PBKDF2_ITERATIONS)
-  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS }
+  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS, kind: isPin(pin) ? 'pin' : 'pass' }
   rt = { status: 'unlocked', address, key, mnemonic, data: emptyData() }
   persist()
   await saving
+  removeLegacy()
   clearFailures()
   emit()
 }
@@ -403,29 +480,69 @@ export function wipeWallet() {
   emit()
 }
 
-export function exportBackup(): string | null {
-  const raw = localStorage.getItem(KEY)
-  const saved = raw ? (JSON.parse(raw) as Persisted) : null
-  return saved?.mode === 'sealed' ? raw : null
+// ---- backups: sealed with their own passphrase, never with the PIN ----
+
+const BACKUP_KIND = 'wayamesh-backup'
+
+interface BackupFile {
+  kind: typeof BACKUP_KIND
+  v: 3
+  address: Address
+  iters: number
+  salt: string
+  iv: string
+  ct: string
 }
 
-/** Replaces this wallet with an encrypted backup, after proving the PIN opens it. */
-export async function importBackup(json: string, pin: string): Promise<boolean> {
+/** Encrypts the wallet and its data under a passphrase you choose. Needs an unlocked wallet. */
+export async function createBackup(passphrase: string): Promise<string> {
+  const problem = passphraseProblem(passphrase)
+  if (problem) throw new Error(problem)
+  if (rt.status !== 'unlocked' || !rt.key) throw new LockedError()
+  const salt = randomBytes(16)
+  const ck = await deriveKey(passphrase, salt, PBKDF2_ITERATIONS)
+  const box = await seal(ck, JSON.stringify({ key: rt.key, mnemonic: rt.mnemonic, data: rt.data }), rt.address)
+  return JSON.stringify({ kind: BACKUP_KIND, v: 3, address: rt.address, iters: PBKDF2_ITERATIONS, salt: toB64(salt), ...box } satisfies BackupFile)
+}
+
+/** Opens a backup file. Throws a plain message when it is not a valid backup or the passphrase is wrong. */
+export async function readBackup(json: string, passphrase: string): Promise<{ key: Hex; mnemonic: string | null; data: Data }> {
+  if (json.length > 8_000_000) throw new Error('That file is too large to be a backup.')
+  let file: Partial<BackupFile>
   try {
-    const saved = JSON.parse(json) as Persisted
-    if (saved.v !== 2 || saved.mode !== 'sealed') return false
-    const ck = await deriveKey(pin, fromB64(saved.salt), saved.iters)
-    await open(ck, saved.iv, saved.ct, saved.address)
-    localStorage.setItem(KEY, json)
-    localStorage.removeItem(OLD_KEY)
-    sealedMeta = { salt: saved.salt, iters: saved.iters }
-    cryptoKey = null
-    rt = { status: 'locked', address: saved.address, key: null, mnemonic: null, data: emptyData() }
-    emit()
-    return (await unlock(pin)).ok
+    file = JSON.parse(json) as Partial<BackupFile>
   } catch {
-    return false
+    throw new Error('That is not a backup file.')
   }
+  if (file.kind !== BACKUP_KIND || file.v !== 3 || typeof file.salt !== 'string' || typeof file.iv !== 'string' || typeof file.ct !== 'string' || typeof file.address !== 'string') {
+    throw new Error('That is not a WayaMesh backup.')
+  }
+  let body: { key: Hex; mnemonic?: string | null; data: unknown }
+  try {
+    const ck = await deriveKey(passphrase, fromB64(file.salt), boundedIters(file.iters))
+    body = JSON.parse(await open(ck, file.iv, file.ct, file.address)) as typeof body
+  } catch {
+    throw new Error('Wrong passphrase, or the file is damaged.')
+  }
+  if (typeof body.key !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(body.key)) throw new Error('The backup does not contain a valid key.')
+  if (privateKeyToAccount(body.key).address.toLowerCase() !== file.address.toLowerCase()) throw new Error('The backup does not match its own address.')
+  return { key: body.key, mnemonic: typeof body.mnemonic === 'string' ? body.mnemonic : null, data: sanitizeData(body.data) }
+}
+
+/** Replaces the wallet on this device with a restored one, protected by a new PIN. The caller must confirm first. */
+export async function restoreWallet(restored: { key: Hex; mnemonic: string | null; data: Data }, pin: string): Promise<void> {
+  const problem = pinProblem(pin)
+  if (problem) throw new Error(problem)
+  const address = privateKeyToAccount(restored.key).address
+  const salt = randomBytes(16)
+  cryptoKey = await deriveKey(pin, salt, PBKDF2_ITERATIONS)
+  sealedMeta = { salt: toB64(salt), iters: PBKDF2_ITERATIONS, kind: isPin(pin) ? 'pin' : 'pass' }
+  rt = { status: 'unlocked', address, key: restored.key, mnemonic: restored.mnemonic, data: restored.data }
+  persist()
+  await saving
+  removeLegacy()
+  clearFailures()
+  emit()
 }
 
 // ---- data mutations ----
@@ -434,7 +551,15 @@ const d = () => rt.data
 
 export function addItem(item: StoredItem): boolean {
   if (d().items.some((i) => i.id === item.id)) return false
-  commit({ ...d(), items: [item, ...d().items] })
+  // Strangers cannot fill the wallet: refuse more unsettled payments past the cap, and drop the oldest finished ones.
+  if (item.status === 'pending' && d().items.filter((i) => i.status === 'pending').length >= CAPS.pendingItems) return false
+  let items = [item, ...d().items]
+  if (items.length > CAPS.items) {
+    const keep = items.filter((i) => i.status === 'pending')
+    const done = items.filter((i) => i.status !== 'pending').slice(0, Math.max(0, CAPS.items - keep.length))
+    items = [...keep, ...done].sort((a, b) => b.createdAt - a.createdAt)
+  }
+  commit({ ...d(), items })
   return true
 }
 
@@ -458,9 +583,15 @@ export function setReserveCache(raw: bigint) {
   commit({ ...d(), reserveCache: { raw: raw.toString(), at: Date.now() } })
 }
 
-export function upsertContact(c: Contact) {
+export function upsertContact(c: Contact): boolean {
+  const existing = d().contacts.find((x) => x.address.toLowerCase() === c.address.toLowerCase())
+  if (!existing) {
+    if (d().contacts.length >= CAPS.contacts) return false
+    if (c.request && d().contacts.filter((x) => x.request).length >= CAPS.requests) return false
+  }
   const rest = d().contacts.filter((x) => x.address.toLowerCase() !== c.address.toLowerCase())
   commit({ ...d(), contacts: [c, ...rest] })
+  return true
 }
 
 export function patchContact(address: Address, patch: Partial<Contact>) {
@@ -473,8 +604,13 @@ export function removeContact(address: Address) {
 
 export function addMessage(m: ChatMessage): boolean {
   if (d().messages.some((x) => x.id === m.id)) return false
-  commit({ ...d(), messages: [...d().messages, m] })
+  commit({ ...d(), messages: [...d().messages, m].slice(-CAPS.messages) })
   return true
+}
+
+/** Deletes a whole conversation from this device. */
+export function removeMessagesFrom(peer: Address) {
+  commit({ ...d(), messages: d().messages.filter((m) => m.peer.toLowerCase() !== peer.toLowerCase()) })
 }
 
 export function updateMessage(id: string, patch: Partial<ChatMessage>) {
@@ -492,7 +628,7 @@ export function markCarriedPublished(id: string) {
 }
 
 export function setStanding(list: Standing[]) {
-  commit({ ...d(), standing: list })
+  commit({ ...d(), standing: list.slice(0, CAPS.standing) })
 }
 
 export function addInvoice(inv: Invoice) {

@@ -3,8 +3,8 @@ import { ArrowLeft, BadgeCheck, Clock, Hand, Send, ShieldCheck, Wallet } from 'l
 import { toast } from 'sonner'
 import { parseUsdc } from '@/onchain-money'
 import { randomRef } from '@/lib/mesh'
-import { fmtUsdc, timeAgo } from '@/lib/format'
-import { addInvoice, patchContact, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
+import { fmtDecimal, timeAgo } from '@/lib/format'
+import { addInvoice, patchContact, removeContact, removeMessagesFrom, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { safetyNumber } from '@/lib/chat/crypto'
 import { myPubkey, sendChat } from '@/lib/chat/service'
 import { useNet } from '@/lib/net'
@@ -54,11 +54,15 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
     }
     if (raw <= 0n) return toast.error('Enter an amount above zero.')
     const ref = randomRef()
-    addInvoice({ ref, amount: askAmount, note: `From chat with ${contact.name}`, createdAt: Date.now(), status: 'open' })
-    await sendChat(contact, { k: 'request', a: askAmount, r: ref, x: text.trim() || undefined })
-    setAsking(false)
-    setAskAmount('')
-    setText('')
+    try {
+      addInvoice({ ref, amount: askAmount, note: `From chat with ${contact.name}`, createdAt: Date.now(), status: 'open' })
+      await sendChat(contact, { k: 'request', a: askAmount, r: ref, x: text.trim() || undefined })
+      setAsking(false)
+      setAskAmount('')
+      setText('')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send the request.')
+    }
   }
 
   const connected = online && relays.connected > 0
@@ -105,6 +109,18 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
           <GhostButton className="w-full" onClick={() => patchContact(contact.address, { verified: !contact.verified })}>
             {contact.verified ? 'Verified. Tap to undo' : 'Mark as verified'}
           </GhostButton>
+          <div className="grid grid-cols-2 gap-2">
+            <GhostButton onClick={() => removeMessagesFrom(contact.address)}>Clear messages</GhostButton>
+            <GhostButton
+              onClick={() => {
+                removeMessagesFrom(contact.address)
+                removeContact(contact.address)
+                onBack()
+              }}
+            >
+              Block and delete
+            </GhostButton>
+          </div>
         </div>
       )}
 
@@ -192,7 +208,7 @@ function OfflineCode({ code, onClose }: { code: string | null; onClose: () => vo
 
 function Bubble({ m, item, name, onPay, onCode }: { m: ChatMessage; item?: { status: string }; name: string; onPay: () => void; onCode: () => void }) {
   const mine = m.dir === 'out'
-  const amount = m.amount ? fmtUsdc(parseUsdc(m.amount)) : ''
+  const amount = fmtDecimal(m.amount)
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -219,12 +235,24 @@ function Bubble({ m, item, name, onPay, onCode }: { m: ChatMessage; item?: { sta
         )}
         {m.kind === 'payment' && (
           <>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
-              {mine ? 'You paid' : `${name} paid you`}
-            </div>
-            <div className="display text-xl font-bold tabular-nums">{amount} USDC</div>
-            {m.text && <p className="text-xs" style={{ color: 'var(--muted)' }}>{m.text}</p>}
-            <Chip tone={item?.status === 'settled' ? 'good' : 'neutral'}>{item?.status === 'settled' ? 'Settled on Arc' : 'Signed · settles when online'}</Chip>
+            {m.verified ? (
+              <>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
+                  {mine ? 'You paid' : `${name} paid you`}
+                </div>
+                <div className="display text-xl font-bold tabular-nums">{amount} USDC</div>
+                {m.text && <p className="text-xs" style={{ color: 'var(--muted)' }}>{m.text}</p>}
+                <Chip tone={item?.status === 'settled' ? 'good' : 'neutral'}>{item?.status === 'settled' ? 'Settled on Arc' : 'Signed · settles when online'}</Chip>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-semibold">Payment code attached</div>
+                <Chip tone="warn">Not verified</Chip>
+                <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+                  This payment is not valid or does not pay you, so nothing was added to your balance.
+                </p>
+              </>
+            )}
           </>
         )}
         <div className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--subtle)' }}>

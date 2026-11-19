@@ -1,4 +1,5 @@
 import type { Hex } from 'viem'
+import { formatUsdc } from '@/onchain-money'
 import { fromB64Url } from '../mesh'
 import { ingestVoucher } from '../ingest'
 import { getDeviceAccount, getDeviceKey, getState, addCarried, addMessage, markCarriedPublished, patchContact, updateMessage, upsertContact, type ChatMessage, type Contact } from '../store'
@@ -69,6 +70,7 @@ export async function sendChat(contact: Contact, content: Content, voucherId?: s
     amount: content.a,
     ref: content.r,
     voucherId,
+    verified: content.k === 'payment' ? true : undefined,
     ts: inner.t * 1000,
     status: 'queued',
     code: encodeMessageCode(contact.pubkey, box),
@@ -114,38 +116,53 @@ export async function handleBox(box: Uint8Array): Promise<BoxResult> {
   if (state.messages.some((m) => m.id === inner.i)) return 'duplicate'
 
   const peer = inner.f
-  if (!state.contacts.some((c) => c.address.toLowerCase() === peer.toLowerCase())) {
-    // A stranger: keep them in a requests folder until the user accepts.
-    upsertContact({ address: peer, name: `${peer.slice(0, 6)}…${peer.slice(-4)}`, pubkey: senderPub, verified: false, addedAt: Date.now(), request: true })
-  } else {
-    const c = state.contacts.find((x) => x.address.toLowerCase() === peer.toLowerCase())
-    if (c && c.pubkey !== senderPub) patchContact(peer, { pubkey: senderPub, verified: false })
+  if (peer.toLowerCase() === me.toLowerCase()) return 'invalid'
+  const known = state.contacts.find((c) => c.address.toLowerCase() === peer.toLowerCase())
+  if (!known) {
+    // A stranger: keep them in a requests folder until the user accepts. The folder has a cap so nobody can flood it.
+    const ok = upsertContact({ address: peer, name: `${peer.slice(0, 6)}…${peer.slice(-4)}`, pubkey: senderPub, verified: false, addedAt: Date.now(), request: true })
+    if (!ok) return 'invalid'
+  } else if (known.pubkey !== senderPub) {
+    patchContact(peer, { pubkey: senderPub, verified: false })
   }
 
+  // Never trust the amount a sender claims. A payment is real only if the attached payment code checks out and pays me.
   let voucherId: string | undefined
+  let verified = false
+  let amount: string | undefined
   if (inner.k === 'payment' && inner.c) {
     try {
-      voucherId = (await ingestVoucher(inner.c)).item.id
+      const res = await ingestVoucher(inner.c)
+      voucherId = res.item.id
+      verified = res.forMe && res.item.from.toLowerCase() === peer.toLowerCase()
+      if (verified) amount = formatUsdc(BigInt(res.item.amount))
     } catch {
       voucherId = undefined
     }
   }
-  addMessage({
+  const stored = addMessage({
     id: inner.i,
     peer,
     dir: 'in',
     kind: inner.k,
-    text: inner.x,
-    amount: inner.a,
+    text: inner.x ? cleanMessage(inner.x) : undefined,
+    amount: inner.k === 'payment' ? amount : inner.a,
     ref: inner.r,
     voucherId,
-    ts: inner.t * 1000,
+    verified: inner.k === 'payment' ? verified : undefined,
+    ts: Math.min(inner.t * 1000, Date.now()),
     status: 'received',
   })
-  return 'delivered'
+  return stored ? 'delivered' : 'duplicate'
+}
+
+/** Removes characters that reorder or hide text, but keeps line breaks. */
+function cleanMessage(text: string): string {
+  return text.replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '').slice(0, 500)
 }
 
 export async function handleRelayContent(content: string): Promise<BoxResult> {
+  if (content.length > 12_000) return 'invalid'
   try {
     return await handleBox(fromB64Url(content))
   } catch {
@@ -157,6 +174,7 @@ export type OfflineResult = 'delivered' | 'duplicate' | 'carried' | 'invalid'
 
 /** An offline message code: either for me, or something to carry to the internet for someone else. */
 export async function ingestMessageCode(code: string): Promise<OfflineResult> {
+  if (code.length > 12_000) return 'invalid'
   const { recipientX, box } = decodeMessageCode(code)
   if (recipientX === xonlyOf(myPubkey())) return handleBox(box)
   const added = addCarried({ id: recipientX.slice(0, 8) + code.slice(-24), code, at: Date.now(), published: false })

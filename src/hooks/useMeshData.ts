@@ -99,21 +99,40 @@ export function useChecks(items: StoredItem[]) {
     refetchInterval: 15000,
     queryFn: async () => {
       const out: Record<string, number> = {}
-      await Promise.all(
-        pending.map(async (i) => {
-          try {
+      const list = pending.slice(0, 100)
+      // A few at a time, so a long list cannot flood the connection.
+      for (let i = 0; i < list.length; i += 10) {
+        await Promise.allSettled(
+          list.slice(i, i + 10).map(async (item) => {
             const code = await client!.readContract({
               address: MESHPAY_ADDRESS,
               abi: MESHPAY_ABI,
               functionName: 'check',
-              args: [toPayment(i), i.signature],
+              args: [toPayment(item), item.signature],
             })
-            out[i.id] = Number(code)
-          } catch {
-            // leave unknown
+            out[item.id] = Number(code)
+          }),
+        )
+      }
+      // A funded payment is still at risk if its payer has asked to withdraw before it can be settled.
+      const payers = [...new Set(list.filter((i) => out[i.id] === 0 && i.source === 'received').map((i) => i.from))]
+      for (const payer of payers.slice(0, 20)) {
+        try {
+          const [amount, unlockAt] = await client!.readContract({
+            address: MESHPAY_ADDRESS,
+            abi: MESHPAY_ABI,
+            functionName: 'withdrawalRequest',
+            args: [payer],
+          })
+          if (amount > 0n) {
+            for (const item of list) {
+              if (item.from === payer && out[item.id] === 0 && BigInt(item.deadline) > unlockAt) out[item.id] = 100
+            }
           }
-        }),
-      )
+        } catch {
+          // unknown: leave as funded
+        }
+      }
       return out
     },
   })

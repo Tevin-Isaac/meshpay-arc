@@ -10,6 +10,6 @@ export function parseOnchainError(error: unknown): string | null {
   if (message.includes('network') || message.includes('timeout') || message.includes('fetch')) {
     return 'Network issue. Check your connection and retry.'
   }
-  if (error instanceof Error && error.message.length < 140) return error.message
+  if (error instanceof Error && error.message.length < 140 && !/https?:|0x[0-9a-f]{16}|rpc|\bat \w/i.test(error.message)) return error.message
   return 'Something went wrong. Please try again.'
 }

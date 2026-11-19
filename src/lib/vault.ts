@@ -53,12 +53,28 @@ export async function open(key: CryptoKey, iv: string, ct: string, aad: string):
 }
 
 /** Rejects PINs that are too easy to guess. */
-export function pinProblem(pin: string): string | null {
-  if (!/^\d{6}$/.test(pin)) return 'Use exactly 6 digits.'
-  if (/^(\d)\1{5}$/.test(pin)) return 'Pick digits that are not all the same.'
-  const asc = '0123456789012345'
-  const desc = '9876543210987654'
-  if (asc.includes(pin) || desc.includes(pin)) return 'Avoid simple runs like 123456.'
+export function isPin(secret: string): boolean {
+  return /^\d{6}$/.test(secret)
+}
+
+/** A 6-digit PIN, or a passphrase of at least 10 characters. Returns what is wrong, or null. */
+export function pinProblem(secret: string): string | null {
+  if (isPin(secret)) {
+    if (/^(\d)\1{5}$/.test(secret)) return 'Pick digits that are not all the same.'
+    const asc = '0123456789012345'
+    const desc = '9876543210987654'
+    if (asc.includes(secret) || desc.includes(secret)) return 'Avoid simple runs like 123456.'
+    return null
+  }
+  if (/^\d+$/.test(secret)) return 'Use exactly 6 digits, or a passphrase of at least 10 characters.'
+  return passphraseProblem(secret, 10)
+}
+
+/** For passphrases (backups need 12 or more). */
+export function passphraseProblem(secret: string, min = 12): string | null {
+  if (secret.length < min) return `Use at least ${min} characters.`
+  if (secret.length > 200) return 'That is too long.'
+  if (new Set(secret).size < 5) return 'Use more different characters.'
   return null
 }
 

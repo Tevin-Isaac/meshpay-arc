@@ -27,12 +27,24 @@ const kit = createAppServerKit({
 
 const STATUS: Record<string, number> = { INPUT: 400, RATE_LIMIT: 429, NETWORK: 504, SERVICE: 502, RPC: 502 }
 
+// Simple in-memory limits: this server is a demo helper, not a production gateway.
+const hits = new Map<string, number[]>()
+function limited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now()
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs)
+  recent.push(now)
+  hits.set(key, recent)
+  if (hits.size > 5000) hits.clear()
+  return recent.length > max
+}
+
 function send(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
   res.end(JSON.stringify(body))
 }
 
 async function readJson(req: IncomingMessage): Promise<unknown> {
+  req.setTimeout(5000)
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
@@ -55,7 +67,9 @@ async function mintSession(req: IncomingMessage, res: ServerResponse) {
   if (typeof address !== 'string' || !isAddress(address) || typeof issuedAt !== 'number' || typeof signature !== 'string' || !isHex(signature)) {
     return send(res, 400, { message: 'Invalid request.' })
   }
-  if (Math.abs(Date.now() - issuedAt) > ONRAMP_AUTH_WINDOW_MS) {
+  if (limited('all', 60, 60_000) || limited(address.toLowerCase(), 5, 60_000)) return send(res, 429, { message: 'Too many tries. Wait a minute.' })
+  // Not from the future, and not older than the window.
+  if (issuedAt > Date.now() + 30_000 || Date.now() - issuedAt > ONRAMP_AUTH_WINDOW_MS) {
     return send(res, 401, { message: 'Signature expired. Try again.' })
   }
   const ok = await verifyMessage({ address, message: onrampAuthMessage(address, issuedAt), signature }).catch(() => false)
@@ -72,7 +86,7 @@ async function mintSession(req: IncomingMessage, res: ServerResponse) {
     return send(res, 200, session)
   } catch (error) {
     console.error('onramp session mint failed', error instanceof Error ? error.message : error)
-    if (error instanceof KitError) return send(res, STATUS[error.type] ?? 500, { message: error.message })
+    if (error instanceof KitError) return send(res, STATUS[error.type] ?? 500, { message: 'The onramp service could not start a session.' })
     return send(res, 500, { message: 'Could not start the onramp.' })
   }
 }
@@ -85,4 +99,4 @@ createServer((req, res) => {
     return
   }
   send(res, 404, { message: 'Not found.' })
-}).listen(PORT, () => console.log(`onramp server listening on :${PORT}`))
+}).listen(PORT, '127.0.0.1', () => console.log(`onramp server listening on 127.0.0.1:${PORT}`))

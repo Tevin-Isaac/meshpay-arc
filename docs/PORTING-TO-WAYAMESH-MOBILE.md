@@ -39,6 +39,22 @@ The older v1 contract (`0x41f84ad06cd7f256c67fbb62906899c29611d6ef`) is supersed
 * `cancelNonce` lets a payer void an unsettled voucher, so offline acceptance is provisional until settlement.
 * No owner, admin, pause or upgrade path in the contract.
 
+
+## 2b. Hardening added after the security review (port these too)
+
+* **Chat messages:** validate every field before storing (`validateInner` in `src/lib/chat/crypto.ts`): id is 24 hex, time within 90 days back and 1 day ahead, kind in {text, payment, request}, text at most 500 characters, amount matches `^\d{1,12}(\.\d{1,6})?$`, ref is 32 bytes, payment code starts with `mp2:` and is at most 400 characters. Reject payloads over 4 KB. Never show an amount the sender claims: show the amount from the payment code that was verified.
+* **Payments for me:** a received payment counts as mine only if `to` is one of my addresses. Otherwise it is carried and the user is told it is not for them. An invoice is marked paid only by a payment to me that covers its amount.
+* **Signatures:** accept only canonical ones (`v` is 27 or 28, `s` is at most half the curve order). Others can never settle.
+* **Relay events:** ignore events dated more than two days from now, or with content over 12,000 characters. Move the sync cursor only for real messages and never past now. Keep the seen-id set bounded.
+* **Caps:** unsettled payments 150, stored payments 400, messages 2,500, contacts 300, message requests 40.
+* **Contact cards:** show a confirm screen with the full address. Strip control and direction-changing characters from names.
+* **Recipients:** refuse the zero address, the USDC token contract and the settlement contract.
+* **Limits:** raising a limit needs the PIN. Cash outs count against limits. A bad limit value falls back to a default instead of switching limits off.
+* **Backups:** sealed with their own passphrase of 12+ characters, never the PIN. Bound the key-stretching cost on import. Check that the address matches the key. Ask for typed confirmation before replacing a wallet.
+* **Unlock:** one attempt at a time, lockout after repeated wrong tries, and locking must clear keys even if a save is stuck.
+* **Production builds:** no debugging hooks that forward console output or network calls.
+* Tests: `scripts/security-tests.ts` has 33 hostile-input checks to port as unit tests.
+
 ## 3. Payment voucher (contract v2)
 
 EIP-712 domain: `name "MeshPay"`, `version "2"`, `chainId 5042002`, `verifyingContract` = contract address.

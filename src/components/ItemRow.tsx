@@ -13,6 +13,7 @@ function StatusChip({ item, check }: { item: StoredItem; check?: number }) {
   if (item.status === 'invalid') return <Chip tone="bad">Invalid</Chip>
   if (check === 0) return <Chip tone="good">Funded</Chip>
   if (check === 5) return <Chip tone="warn">Reserve low</Chip>
+  if (check === 100) return <Chip tone="warn">Payer is withdrawing</Chip>
   return <Chip>Not yet checked</Chip>
 }
 

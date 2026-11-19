@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { MessageSquarePlus, ShieldQuestion, UserPlus } from 'lucide-react'
-import { fmtUsdc, timeAgo } from '@/lib/format'
-import { parseUsdc } from '@/onchain-money'
+import { fmtDecimal, timeAgo } from '@/lib/format'
 import { patchContact, removeContact, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { ContactSheet } from '../ContactSheet'
 import { Thread } from '../Thread'
@@ -10,9 +9,9 @@ import { PrimaryButton } from '../ui'
 function preview(m?: ChatMessage): string {
   if (!m) return 'No messages yet'
   const who = m.dir === 'out' ? 'You: ' : ''
-  if (m.kind === 'payment') return `${who}Payment ${m.amount ? fmtUsdc(parseUsdc(m.amount)) : ''} USDC`
-  if (m.kind === 'request') return `${who}Requested ${m.amount ? fmtUsdc(parseUsdc(m.amount)) : ''} USDC`
-  return `${who}${m.text ?? ''}`
+  if (m.kind === 'payment') return m.verified ? `${who}Payment ${fmtDecimal(m.amount)} USDC` : `${who}Payment code (not verified)`
+  if (m.kind === 'request') return `${who}Requested ${fmtDecimal(m.amount)} USDC`
+  return `${who}${String(m.text ?? '').slice(0, 120)}`
 }
 
 export function ChatsTab() {

@@ -52,4 +52,7 @@ Never commit `.env`.
 
 ## Security notes
 
+Read `docs/SECURITY.md` for the review, what was fixed and what still stands between this app and mainnet. Run `bun run test:security` for the hostile-input checks.
+
+
 The security model, including what offline payments can and cannot guarantee, is written down in `docs/PORTING-TO-WAYAMESH-MOBILE.md`. In short: offline acceptance is provisional until a payment settles, and the web PIN protects against casual access, not against someone who copies the encrypted vault file. Get an independent audit before any mainnet use.

@@ -35,6 +35,10 @@ function parse(raw: string): ShardPayload {
   if (typeof o.i !== 'number' || typeof o.t !== 'number' || typeof o.n !== 'number' || typeof o.a !== 'string' || typeof o.s !== 'string') {
     throw new Error('A shard is missing fields.')
   }
+  if (!Number.isInteger(o.i) || !Number.isInteger(o.t) || !Number.isInteger(o.n) || o.t < 2 || o.n < o.t || o.n > 10 || o.i < 1 || o.i > o.n) {
+    throw new Error('A shard has impossible numbers. It may be fake.')
+  }
+  if (!/^[0-9a-fA-F]{8}$/.test(o.a) || o.s.length > 400 || !/^[A-Za-z0-9+/=]+$/.test(o.s)) throw new Error('A shard is damaged.')
   return o as ShardPayload
 }
 

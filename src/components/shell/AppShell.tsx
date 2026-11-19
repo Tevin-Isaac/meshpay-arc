@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Clock, MessagesSquare, Radio, Settings, Wallet } from 'lucide-react'
-import { useMeshState } from '@/lib/store'
+import { useAccount } from 'wagmi'
+import { setConnectedWallet } from '@/lib/mine'
+import { onStorageFailure, useMeshState } from '@/lib/store'
+import { toast } from 'sonner'
+import { ErrorBoundary } from '../ErrorBoundary'
 import { useChatEngine, useStandingRunner } from '@/hooks/useEngines'
 import { Header } from '../Header'
 import { WalletTab } from '../tabs/WalletTab'
@@ -40,6 +44,18 @@ export function AppShell() {
     }
   }, [])
 
+  const { address: connected } = useAccount()
+  useEffect(() => {
+    setConnectedWallet(connected)
+  }, [connected])
+  useEffect(
+    () =>
+      onStorageFailure(() => {
+        toast.error('This device could not save your latest changes (storage may be full). Make a backup now.', { duration: 12000 })
+      }),
+    [],
+  )
+
   const requests = contacts.filter((c) => c.request).length
 
   return (
@@ -47,11 +63,13 @@ export function AppShell() {
       <div className="page-glow relative isolate min-h-dvh">
         <main className="mx-auto w-full max-w-md space-y-3 px-4 pb-48 pt-[max(env(safe-area-inset-top),16px)]">
           <Header />
-          {tab === 'wallet' && <WalletTab />}
-          {tab === 'chats' && <ChatsTab />}
-          {tab === 'history' && <HistoryTab />}
-          {tab === 'mesh' && <MeshTab />}
-          {tab === 'settings' && <SettingsTab />}
+          <ErrorBoundary key={tab} area="This tab">
+            {tab === 'wallet' && <WalletTab />}
+            {tab === 'chats' && <ChatsTab />}
+            {tab === 'history' && <HistoryTab />}
+            {tab === 'mesh' && <MeshTab />}
+            {tab === 'settings' && <SettingsTab />}
+          </ErrorBoundary>
         </main>
         <nav
           aria-label="Main"

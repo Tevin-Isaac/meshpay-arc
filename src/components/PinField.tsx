@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { isPin } from '@/lib/vault'
 
 export function PinField({
   value,
@@ -44,4 +45,38 @@ export function AuthShell({ title, children, footer }: { title: ReactNode; child
       {footer && <div className="mt-4 text-center">{footer}</div>}
     </main>
   )
+}
+
+/** Asks for the wallet's PIN or passphrase, whichever this wallet uses. */
+export function SecretField({
+  value,
+  onChange,
+  label,
+  kind,
+  autoFocus,
+}: {
+  value: string
+  onChange: (v: string) => void
+  label: string
+  kind: 'pin' | 'pass'
+  autoFocus?: boolean
+}) {
+  if (kind === 'pin') return <PinField value={value} onChange={onChange} label={label} autoFocus={autoFocus} />
+  return (
+    <input
+      type="password"
+      autoComplete="off"
+      autoFocus={autoFocus}
+      value={value}
+      onChange={(e) => onChange(e.target.value.slice(0, 200))}
+      aria-label={label}
+      placeholder="Passphrase"
+      className="inner w-full rounded-2xl px-4 py-3 text-base outline-none"
+    />
+  )
+}
+
+/** True when the value is long enough to be tried. */
+export function secretReady(value: string, kind: 'pin' | 'pass'): boolean {
+  return kind === 'pin' ? isPin(value) : value.length >= 10
 }

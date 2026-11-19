@@ -3,8 +3,9 @@ import { toast } from 'sonner'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
 import { fmtUsdc } from '@/lib/format'
 import { spentToday } from '@/lib/policy'
-import { setPolicy, setSettings, useMeshState } from '@/lib/store'
+import { revealSecret, setPolicy, setSettings, useMeshState } from '@/lib/store'
 import { AmountInput, PrimaryButton, Sheet } from './ui'
+import { SecretField, secretReady } from './PinField'
 
 export function LimitsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -15,7 +16,9 @@ export function LimitsSheet({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 function LimitsBody({ onClose }: { onClose: () => void }) {
-  const { policy, items, settings } = useMeshState()
+  const { policy, items, settings, secretKind } = useMeshState()
+  const [secret, setSecret] = useState('')
+  const [busy, setBusy] = useState(false)
   const [perTx, setPerTx] = useState(policy.perTx)
   const [daily, setDaily] = useState(policy.daily)
   const [accept, setAccept] = useState(settings.acceptLimit)
@@ -30,17 +33,31 @@ function LimitsBody({ onClose }: { onClose: () => void }) {
   })()
   const pct = dailyCap > 0n ? Math.min(100, Number((used * 100n) / dailyCap)) : 0
 
-  const save = () => {
+  // Tightening a limit is free. Loosening one, or turning it off, needs your PIN so a borrowed phone cannot do it.
+  const big = (v: string) => {
+    try {
+      const n = parseUsdc(v || '0')
+      return n === 0n ? 2n ** 200n : n
+    } catch {
+      return 0n
+    }
+  }
+  const loosening = big(perTx) > big(policy.perTx) || big(daily) > big(policy.daily) || big(accept) > big(settings.acceptLimit)
+
+  const save = async () => {
     try {
       parseUsdc(perTx || '0')
       parseUsdc(daily || '0')
-    } catch {
-      return toast.error('Enter valid amounts.')
-    }
-    try {
       parseUsdc(accept || '0')
     } catch {
       return toast.error('Enter valid amounts.')
+    }
+    if (loosening) {
+      setBusy(true)
+      const ok = await revealSecret(secret)
+      setBusy(false)
+      setSecret('')
+      if (!ok) return toast.error(`Wrong ${secretKind === 'pin' ? 'PIN' : 'passphrase'}, or too many tries.`)
     }
     setPolicy({ perTx: perTx || '0', daily: daily || '0' })
     setSettings({ acceptLimit: accept || '0' })
@@ -85,7 +102,17 @@ function LimitsBody({ onClose }: { onClose: () => void }) {
           </div>
           <AmountInput value={accept} onChange={setAccept} hint="Payments above this are flagged until they settle" />
         </div>
-        <PrimaryButton onClick={save}>Save limits</PrimaryButton>
+        {loosening && (
+          <div className="space-y-2">
+            <p className="text-xs text-pretty" style={{ color: 'var(--warn)' }}>
+              You are raising a limit. Enter your {secretKind === 'pin' ? 'PIN' : 'passphrase'} to confirm.
+            </p>
+            <SecretField value={secret} onChange={setSecret} label="PIN to raise limits" kind={secretKind} />
+          </div>
+        )}
+        <PrimaryButton onClick={() => void save()} loading={busy} disabled={loosening && !secretReady(secret, secretKind)}>
+          Save limits
+        </PrimaryButton>
 
         <p className="text-center text-[11px]" style={{ color: 'var(--subtle)' }}>
           Daily cap {formatUsdc(dailyCap)} USDC

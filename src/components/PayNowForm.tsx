@@ -9,9 +9,10 @@ import { formatUsdc, parseUsdc } from '@/onchain-money'
 import { fmtUsdc } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { CHAIN, USDC_ADDRESS, ZERO_REF } from '@/lib/mesh'
+import { groupAddress, lookalike, unsafeRecipient } from '@/lib/guard'
 import { useNet } from '@/lib/net'
-import { addItem } from '@/lib/store'
-import { AmountInput, PrimaryButton } from './ui'
+import { addItem, useMeshState } from '@/lib/store'
+import { AmountInput, GhostButton, PrimaryButton } from './ui'
 
 /** Normal online transfer from the connected wallet. Lands in about a second. */
 export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amount: string; setAmount: (v: string) => void; onClose: () => void }) {
@@ -22,6 +23,11 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
   const { switchChainAsync } = useSwitchChain()
   const [step, setStep] = useState<'wallet' | 'confirming' | null>(null)
   const [done, setDone] = useState<{ hash: `0x${string}`; amount: bigint } | null>(null)
+  const [reviewing, setReviewing] = useState(false)
+  const { contacts, items } = useMeshState()
+  const contact = isAddress(to) ? contacts.find((c) => c.address.toLowerCase() === to.toLowerCase()) : undefined
+  const known = [...contacts.map((c) => c.address), ...items.map((i) => i.to)]
+  const similar = isAddress(to) ? lookalike(to, known) : null
 
   const balance = useReadContract({
     address: USDC_ADDRESS,
@@ -32,17 +38,38 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
     query: { enabled: !!address && online, refetchInterval: 8000 },
   })
 
-  const pay = async () => {
-    if (!address || !client) return
-    if (!isAddress(to) || to.toLowerCase() === zeroAddress) return toast.error('Enter a valid recipient address.')
+  const check = (): bigint | null => {
+    if (!isAddress(to) || to.toLowerCase() === zeroAddress) {
+      toast.error('Enter a valid recipient address.')
+      return null
+    }
+    const unsafe = unsafeRecipient(to)
+    if (unsafe) {
+      toast.error(unsafe)
+      return null
+    }
     let raw: bigint
     try {
       raw = parseUsdc(amount)
     } catch {
-      return toast.error('Enter a valid amount.')
+      toast.error('Enter a valid amount.')
+      return null
     }
-    if (raw <= 0n) return toast.error('Enter an amount above zero.')
-    if (balance.data !== undefined && raw > balance.data) return toast.error('That is more than your wallet balance.')
+    if (raw <= 0n) {
+      toast.error('Enter an amount above zero.')
+      return null
+    }
+    if (balance.data !== undefined && raw > balance.data) {
+      toast.error('That is more than your wallet balance.')
+      return null
+    }
+    return raw
+  }
+
+  const pay = async () => {
+    if (!address || !client) return
+    const raw = check()
+    if (raw === null) return
     try {
       if (chainId !== CHAIN.id) await switchChainAsync({ chainId: CHAIN.id })
       setStep('wallet')
@@ -79,6 +106,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
       if (msg) toast.error(msg)
     } finally {
       setStep(null)
+      setReviewing(false)
     }
   }
 
@@ -130,9 +158,39 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
         hint={balance.data === undefined ? undefined : `Wallet ${fmtUsdc(balance.data)} · Max`}
         onHint={balance.data && balance.data > 0n ? () => setAmount(formatUsdc(balance.data)) : undefined}
       />
-      <PrimaryButton onClick={() => void pay()} loading={step !== null} disabled={!to || !amount}>
-        {step === 'wallet' ? 'Confirm in wallet…' : step === 'confirming' ? 'Confirming on Arc Testnet…' : 'Pay now'}
-      </PrimaryButton>
+      {reviewing ? (
+        <div className="space-y-3">
+          <div className="inner space-y-2 rounded-2xl p-4 text-sm">
+            <div className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
+              You are paying {contact ? contact.name : 'a new address'}
+            </div>
+            <div className="mono break-words text-xs leading-relaxed">{isAddress(to) ? groupAddress(to) : to}</div>
+            <div className="display text-2xl font-bold tabular-nums">{amount} USDC</div>
+          </div>
+          {similar && (
+            <p className="rounded-xl p-3 text-xs font-semibold text-pretty" style={{ background: 'rgba(255,77,106,0.12)', color: 'var(--danger)' }}>
+              This address looks almost like {groupAddress(similar)} but is different. This is a common trick. Only continue if you are sure.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <GhostButton onClick={() => setReviewing(false)} disabled={step !== null}>
+              Back
+            </GhostButton>
+            <PrimaryButton onClick={() => void pay()} loading={step !== null}>
+              {step === 'wallet' ? 'Confirm in wallet…' : step === 'confirming' ? 'Confirming…' : 'Confirm and pay'}
+            </PrimaryButton>
+          </div>
+        </div>
+      ) : (
+        <PrimaryButton
+          onClick={() => {
+            if (check() !== null) setReviewing(true)
+          }}
+          disabled={!to || !amount}
+        >
+          Review payment
+        </PrimaryButton>
+      )}
       <p className="text-center text-xs text-pretty" style={{ color: 'var(--subtle)' }}>
         Paid straight from your wallet. The recipient has it in about a second, no waiting to settle.
       </p>

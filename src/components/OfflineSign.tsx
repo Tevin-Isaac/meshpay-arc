@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { AlertTriangle, MessageCircle, ShieldCheck, WifiOff } from 'lucide-react'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
 import { fmtUsdc } from '@/lib/format'
-import { groupAddress, lookalike } from '@/lib/guard'
+import { groupAddress, lookalike, unsafeRecipient } from '@/lib/guard'
 import { VOUCHER_TTL_SECONDS } from '@/lib/mesh'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
 import { useNet } from '@/lib/net'
@@ -48,6 +48,8 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
 
   const review = () => {
     if (!isAddress(to) || to.toLowerCase() === zeroAddress) return toast.error('Enter a valid recipient address.')
+    const unsafe = unsafeRecipient(to)
+    if (unsafe) return toast.error(unsafe)
     if (!parsed || parsed.raw <= 0n) return toast.error('Enter a valid amount.')
     setStep('review')
   }
@@ -60,10 +62,14 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
       setSigned(res)
       setStep('signed')
       if (contact) {
-        // Payments to someone in your contacts travel in the encrypted chat as well as by QR.
-        await sendChat(contact, { k: 'payment', a: formatUsdc(BigInt(res.item.amount)), r: invoiceRef, c: res.code }, res.item.id)
-        setSentChat(true)
-        toast.success(online ? 'Signed and sent in your encrypted chat.' : 'Signed. It sends in chat when you are online, or hand over the code.')
+        // The payment is signed and held. Delivery in chat is a separate step that can fail without undoing it.
+        try {
+          await sendChat(contact, { k: 'payment', a: formatUsdc(BigInt(res.item.amount)), r: invoiceRef, c: res.code }, res.item.id)
+          setSentChat(true)
+          toast.success(online ? 'Signed and sent in your encrypted chat.' : 'Signed. It sends in chat when you are online, or hand over the code.')
+        } catch {
+          toast.warning('Signed and saved, but chat delivery failed. Hand over the code instead. Do not sign it again.')
+        }
       }
     } catch (e) {
       toast.error(e instanceof PaymentBlocked ? e.message : 'Could not sign the payment.')

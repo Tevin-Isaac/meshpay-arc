@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ConnectKitButton } from 'connectkit'
+import { unsafeRecipient } from '@/lib/guard'
 import { createWalletClient, erc20Abi, getAddress, http, isAddress, zeroAddress } from 'viem'
 import { useAccount, usePublicClient, useReadContract, useSwitchChain, useWriteContract } from 'wagmi'
 import { toast } from 'sonner'
@@ -170,6 +171,8 @@ function AddFundsBody() {
   const cashOut = async () => {
     if (!address) return
     if (dest && (!isAddress(dest) || dest.toLowerCase() === zeroAddress)) return toast.error('Enter a valid address, or leave it empty to use your wallet.')
+    const unsafeDest = dest ? unsafeRecipient(dest) : null
+    if (unsafeDest) return toast.error(unsafeDest)
     try {
       const raw = parseUsdc(amount)
       const target = dest ? getAddress(dest) : address

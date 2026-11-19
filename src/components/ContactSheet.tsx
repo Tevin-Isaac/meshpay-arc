@@ -3,9 +3,10 @@ import { ClipboardPaste } from 'lucide-react'
 import { toast } from 'sonner'
 import { shortAddress } from '@/lib/format'
 import { useMeshState } from '@/lib/store'
-import { encodeCard } from '@/lib/chat/crypto'
+import { encodeCard, type ContactCard } from '@/lib/chat/crypto'
 import { scan } from '@/lib/scan'
 import { myCard } from '@/lib/chat/service'
+import { CardConfirm } from './CardConfirm'
 import { CodeShare } from './CodeShare'
 import { GhostButton, Sheet } from './ui'
 
@@ -20,17 +21,19 @@ export function ContactSheet({ open, onClose }: { open: boolean; onClose: () => 
 function ContactBody({ onClose }: { onClose: () => void }) {
   const { address } = useMeshState()
   const [text, setText] = useState('')
+  const [card, setCard] = useState<ContactCard | null>(null)
 
   const add = async () => {
     try {
       const res = await scan(text)
       if (res.kind !== 'contact') return toast.error('That is not a contact card.')
-      toast.success(`${res.card.name || shortAddress(res.card.address)} added.`)
-      onClose()
+      setCard(res.card)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not read that card.')
     }
   }
+
+  if (card) return <CardConfirm card={card} onDone={onClose} />
 
   return (
     <div className="space-y-4">

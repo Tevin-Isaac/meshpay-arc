@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { lock, unlock, useMeshState } from '@/lib/store'
-import { AuthShell, PinField } from './PinField'
+import { lock, setPin, unlock, useMeshState } from '@/lib/store'
+import { pinProblem } from '@/lib/vault'
+import { AuthShell, PinField, SecretField } from './PinField'
+import { PrimaryButton } from './ui'
 import { Onboarding } from './Onboarding'
 
 /** Keeps the wallet closed behind the PIN, and locks it again when you step away. */
@@ -11,6 +13,8 @@ export function LockGate({ children }: { children: ReactNode }) {
 
   if (status === 'new') return <Onboarding />
   if (status === 'locked') return <UnlockScreen />
+  // An older wallet that was never encrypted must be protected before it can be used.
+  if (status === 'plain') return <ProtectScreen />
   return <>{children}</>
 }
 
@@ -42,6 +46,7 @@ function useAutoLock(active: boolean, minutes: number) {
 }
 
 function UnlockScreen() {
+  const { secretKind } = useMeshState()
   const [pin, setPinValue] = useState('')
   const [busy, setBusy] = useState(false)
   const [wait, setWait] = useState(0)
@@ -66,17 +71,23 @@ function UnlockScreen() {
   return (
     <AuthShell title="Welcome back">
       <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-        Enter your PIN. Everything on this phone stays encrypted until you do.
+        Enter your {secretKind === 'pin' ? 'PIN' : 'passphrase'}. Everything on this phone stays encrypted until you do.
       </p>
-      <PinField
+      <SecretField
         value={pin}
-        label="PIN"
+        label={secretKind === 'pin' ? 'PIN' : 'Passphrase'}
+        kind={secretKind}
         autoFocus
         onChange={(v) => {
           setPinValue(v)
-          if (v.length === 6 && !busy && wait <= 0) void submit(v)
+          if (secretKind === 'pin' && v.length === 6 && !busy && wait <= 0) void submit(v)
         }}
       />
+      {secretKind === 'pass' && (
+        <PrimaryButton onClick={() => void submit(pin)} disabled={busy || wait > 0 || pin.length < 10}>
+          Unlock
+        </PrimaryButton>
+      )}
       {wait > 0 && (
         <p className="text-xs font-semibold" style={{ color: 'var(--warn)' }}>
           Too many tries. Wait {Math.ceil(wait / 1000)}s.
@@ -87,6 +98,40 @@ function UnlockScreen() {
           Unlocking…
         </p>
       )}
+    </AuthShell>
+  )
+}
+
+function ProtectScreen() {
+  const [pin, setPinValue] = useState('')
+  const [again, setAgain] = useState('')
+  const [busy, setBusy] = useState(false)
+  const problem = pin.length === 6 ? pinProblem(pin) : null
+  return (
+    <AuthShell title="Protect your wallet">
+      <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
+        This wallet was saved without a PIN. Choose a 6-digit PIN now. It encrypts your key and everything private on this device.
+      </p>
+      <PinField value={pin} onChange={setPinValue} label="New PIN" autoFocus />
+      <PinField value={again} onChange={setAgain} label="Repeat PIN" />
+      {problem && (
+        <p className="text-xs font-semibold" style={{ color: 'var(--danger)' }}>
+          {problem}
+        </p>
+      )}
+      <PrimaryButton
+        loading={busy}
+        disabled={pin.length !== 6 || again.length !== 6 || !!problem}
+        onClick={() => {
+          if (pin !== again) return toast.error('The two PINs do not match.')
+          setBusy(true)
+          setPin(pin)
+            .catch((e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not set the PIN.'))
+            .finally(() => setBusy(false))
+        }}
+      >
+        Encrypt this wallet
+      </PrimaryButton>
     </AuthShell>
   )
 }

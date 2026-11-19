@@ -54,6 +54,7 @@ function connect(c: Conn) {
           const e = data[2] as RelayEvent
           if (seen.has(e.id) || !relayEventValid(e)) return
           seen.add(e.id)
+          if (seen.size > 5000) seen.delete(seen.values().next().value as string)
           handler?.(e)
         } else if (data[0] === 'OK' && typeof data[1] === 'string') {
           c.acks.get(data[1])?.(data[2] === true)

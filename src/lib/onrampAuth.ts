@@ -2,7 +2,7 @@
  * The wallet proves it owns the destination address by signing this message.
  * The server verifies it, so a session can only be minted for the signer's own address.
  */
-export const ONRAMP_AUTH_WINDOW_MS = 5 * 60 * 1000
+export const ONRAMP_AUTH_WINDOW_MS = 2 * 60 * 1000
 
 export function onrampAuthMessage(address: string, issuedAt: number): string {
   return [
