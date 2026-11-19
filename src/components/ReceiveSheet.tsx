@@ -47,7 +47,7 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
             style={{
               background: tab === t ? 'var(--surface-strong)' : 'transparent',
               color: tab === t ? 'var(--ink)' : 'var(--muted)',
-              boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.5)' : 'none',
+              boxShadow: tab === t ? 'var(--seg-shadow)' : 'none',
             }}
           >
             {t === 'pay' ? 'Get paid' : 'My contact card'}
@@ -91,7 +91,7 @@ function ReceiveBody({ onClose, onScan }: { onClose: () => void; onScan: () => v
                   style={{
                     background: target === t ? 'var(--surface-strong)' : 'transparent',
                     color: target === t ? 'var(--ink)' : 'var(--muted)',
-                    boxShadow: target === t ? '0 1px 3px rgba(0,0,0,0.5)' : 'none',
+                    boxShadow: target === t ? 'var(--seg-shadow)' : 'none',
                   }}
                 >
                   {t === 'device' ? 'This device' : 'My wallet'}

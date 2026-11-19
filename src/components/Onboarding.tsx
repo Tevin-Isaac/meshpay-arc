@@ -38,7 +38,8 @@ export function Onboarding() {
       <main className="ob">
         <OnboardingMesh />
         <div className="ob-brand">
-          <img src={asset('mark.svg')} alt="" />
+          <img src={asset('mark.svg')} alt="" className="only-dark" />
+          <img src={asset('mark-light.svg')} alt="" className="only-light" />
           <div className="ob-wordmark">WAYAMESH</div>
         </div>
         <div className="ob-brand" style={{ gap: 8 }}>
@@ -132,7 +133,7 @@ function Phrase({ mnemonic, onBack, onNext }: { mnemonic: string; onBack: () => 
         )}
       </div>
       <label className="flex items-start gap-3 text-left text-xs" style={{ color: 'var(--muted)' }}>
-        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 size-5 accent-[#3ed9b8]" />
+        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 size-5 accent-[var(--accent)]" />
         I wrote the 12 words down and kept them somewhere safe.
       </label>
       <PrimaryButton onClick={onNext} disabled={!shown || !saved}>
@@ -321,7 +322,7 @@ function SetPin({ mnemonic, recovered, restored, onBack }: { mnemonic: string; r
 
   return (
     <AuthShell title="Protect it with a PIN" footer={<BackLink onClick={onBack} />}>
-      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl" style={{ background: 'rgba(62,217,184,0.12)', color: 'var(--accent)' }}>
+      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl" style={{ background: 'var(--tint-accent)', color: 'var(--accent)' }}>
         <ShieldCheck className="size-6" />
       </div>
       <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>

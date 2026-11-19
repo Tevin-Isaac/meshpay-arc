@@ -77,7 +77,7 @@ export function AppShell() {
           aria-label="Main"
           className="fixed inset-x-0 bottom-[58px] z-40 mx-auto max-w-md px-3"
         >
-          <ul className="glass grid grid-cols-5 gap-1 rounded-3xl p-1.5" style={{ background: 'rgba(15,15,26,0.94)' }}>
+          <ul className="glass grid grid-cols-5 gap-1 rounded-3xl p-1.5" style={{ background: 'var(--nav-bg)' }}>
             {TABS.map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
@@ -88,7 +88,7 @@ export function AppShell() {
                     className="relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-semibold transition-colors"
                     style={{
                       color: active ? 'var(--accent)' : 'var(--subtle)',
-                      background: active ? 'rgba(62,217,184,0.1)' : 'transparent',
+                      background: active ? 'var(--tint-accent)' : 'transparent',
                     }}
                   >
                     <Icon className="size-5" />

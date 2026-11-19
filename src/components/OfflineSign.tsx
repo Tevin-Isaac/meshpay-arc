@@ -131,7 +131,7 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
           </dl>
         </div>
         {similar && (
-          <div className="flex gap-2 rounded-2xl p-3 text-xs text-pretty" style={{ background: 'rgba(186,43,76,0.1)', color: 'var(--danger)' }}>
+          <div className="flex gap-2 rounded-2xl p-3 text-xs text-pretty" style={{ background: 'var(--tint-danger)', color: 'var(--danger)' }}>
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <span>
               This address looks almost the same as one you know ({getAddress(similar).slice(0, 8)}…{similar.slice(-6)}) but is different. This is a common scam.

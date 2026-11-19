@@ -213,7 +213,7 @@ function AddFundsBody() {
               style={{
                 background: tab === t ? 'var(--surface-strong)' : 'transparent',
                 color: tab === t ? 'var(--ink)' : 'var(--muted)',
-                boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.5)' : 'none',
+                boxShadow: tab === t ? 'var(--seg-shadow)' : 'none',
               }}
             >
               {t === 'add' ? 'Add funds' : 'Cash out'}

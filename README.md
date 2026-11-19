@@ -46,7 +46,9 @@ The settlement contract is **MeshPayV2** on Arc Testnet (`0xd619b77bb8389a632800
 
 ### Other features
 
-Autopilot (recurring payments that sign inside your limits, with an audit log), mesh carrying of other people's payments and messages, spending limits, an optional Connect wallet button (web only) and a Circle onramp sandbox widget that works only while its small backend runs.
+Light and dark themes with a sun/moon button in the header and an Appearance row in Settings (System, Light, Dark). The choice is stored in `localStorage` under `wayamesh-theme` (`system`, `light` or `dark`), the key agreed with the wayamesh.xyz site (same origin), so a choice made on one applies to the other. System is the default and follows the device live. QR codes stay black on white in both themes.
+
+Also: Autopilot (recurring payments that sign inside your limits, with an audit log), mesh carrying of other people's payments and messages, spending limits, an optional Connect wallet button (web only) and a Circle onramp sandbox widget that works only while its small backend runs.
 
 ## What has and has not been verified
 
@@ -56,6 +58,8 @@ Autopilot (recurring payments that sign inside your limits, with an audit log), 
 * `npx vite build`: production build succeeds, including builds mounted under `/app-static/`.
 * `npm run test:security`: 33 hostile-input checks pass.
 * `npm run test:expiry`: 18 checks for the 24-hour expiry pass (tag, drop and purge rules, event validity, unchanged wire format).
+* `npm run test:theme`: 30 checks for the theme preference logic, including that `public/theme-init.js` agrees with it.
+* Light and dark themes in headless Chrome at 390x844 and 1280x800: every screen and sheet captured in both, the header toggle flips the theme and survives a reload, System follows the OS live, and no console errors.
 * `forge test`: 50 contract tests pass (unit, batch, withdraw, fuzz, invariants).
 * `ramp-server`: `npm test` runs 28 tests, all passing; `tsc --noEmit` is clean there too.
 * Ramp, mock mode: `npm run e2e` runs the full on-ramp (signed request, polling to completed, replay and tampering rejected) against the running server with a throwaway wallet.

@@ -24,13 +24,13 @@ export function Sheet({
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
-          <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
+          <div className="absolute inset-0 backdrop-blur-sm" style={{ background: "var(--scrim)" }} />
           <motion.section
             role="dialog"
             aria-label={title}
             className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl"
             style={{
-              background: 'rgba(12,12,22,0.97)',
+              background: 'var(--sheet-bg)',
               backdropFilter: 'blur(40px) saturate(200%)',
               WebkitBackdropFilter: 'blur(40px) saturate(200%)',
             }}
@@ -50,7 +50,7 @@ export function Sheet({
           >
             <div className="h-1" style={{ background: 'var(--spectral)' }} />
             <div className="flex cursor-grab touch-none justify-center pb-1 pt-3" onPointerDown={(e) => controls.start(e)} aria-hidden="true">
-              <div className="h-1.5 w-12 rounded-full bg-white/20" />
+              <div className="h-1.5 w-12 rounded-full" style={{ background: "var(--grab)" }} />
             </div>
             <div className="flex items-center justify-between px-5 pt-2">
               <h2 className="display text-xl font-bold" style={{ color: 'var(--ink)' }}>
@@ -106,10 +106,10 @@ export function GhostButton({ children, className = '', ...rest }: ButtonHTMLAtt
 
 export function Chip({ tone = 'neutral', children }: { tone?: 'neutral' | 'good' | 'warn' | 'bad'; children: ReactNode }) {
   const tones = {
-    neutral: { bg: 'rgba(255,255,255,0.07)', fg: 'var(--ink-2)' },
-    good: { bg: 'rgba(62,217,184,0.14)', fg: 'var(--success)' },
-    warn: { bg: 'rgba(245,166,35,0.14)', fg: 'var(--warn)' },
-    bad: { bg: 'rgba(255,77,106,0.14)', fg: 'var(--danger)' },
+    neutral: { bg: 'var(--tint-neutral)', fg: 'var(--ink-2)' },
+    good: { bg: 'var(--tint-accent)', fg: 'var(--success)' },
+    warn: { bg: 'var(--tint-warn)', fg: 'var(--warn)' },
+    bad: { bg: 'var(--tint-danger)', fg: 'var(--danger)' },
   }[tone]
   return (
     <span
@@ -143,7 +143,7 @@ export function AmountInput({
         }}
         placeholder="0.00"
         aria-label="Amount in USDC"
-        className="display w-full bg-transparent text-4xl font-bold tabular-nums outline-none placeholder:opacity-25"
+        className="display w-full bg-transparent text-4xl font-bold tabular-nums outline-none placeholder:opacity-25 [&::placeholder]:text-[var(--ink)]"
         style={{ color: 'var(--ink)' }}
       />
       <div className="mt-2 flex items-center justify-between">

@@ -278,7 +278,7 @@ export function EraseCard() {
         disabled={confirm !== 'ERASE'}
         onClick={wipeWallet}
         className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold disabled:opacity-30"
-        style={{ background: 'rgba(255,77,106,0.14)', color: 'var(--danger)' }}
+        style={{ background: 'var(--tint-danger)', color: 'var(--danger)' }}
       >
         <Trash2 className="size-4" /> Erase from this device
       </button>

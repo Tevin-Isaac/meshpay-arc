@@ -99,7 +99,7 @@ function AgentBody() {
               <button
                 aria-label="Delete"
                 className="flex size-11 items-center justify-center rounded-full"
-                style={{ background: 'rgba(255,77,106,0.12)', color: 'var(--danger)' }}
+                style={{ background: 'var(--tint-danger)', color: 'var(--danger)' }}
                 onClick={() => setStanding(standing.filter((x) => x.id !== s.id))}
               >
                 <Trash2 className="size-4" />

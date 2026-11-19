@@ -44,7 +44,7 @@ export function ChatsTab() {
         <button onClick={() => setOpenAddress(c.address)} className="flex min-h-16 w-full items-center gap-3 py-3 text-left">
           <div
             className="display flex size-11 shrink-0 items-center justify-center rounded-full text-base font-bold"
-            style={{ background: 'rgba(62,217,184,0.14)', color: 'var(--accent)' }}
+            style={{ background: 'var(--tint-accent)', color: 'var(--accent)' }}
           >
             {c.name.slice(0, 1).toUpperCase()}
           </div>
@@ -117,7 +117,7 @@ export function ChatsTab() {
                 <button
                   onClick={() => removeContact(c.address)}
                   className="min-h-10 rounded-full px-3 text-xs font-semibold"
-                  style={{ background: 'rgba(255,77,106,0.12)', color: 'var(--danger)' }}
+                  style={{ background: 'var(--tint-danger)', color: 'var(--danger)' }}
                 >
                   Block
                 </button>

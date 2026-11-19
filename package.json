@@ -16,9 +16,10 @@
     "contracts:test": "forge test",
     "test:security": "tsx scripts/security-tests.ts",
     "test:expiry": "tsx scripts/expiry-tests.ts",
-    "test": "tsx scripts/security-tests.ts && tsx scripts/expiry-tests.ts",
+    "test": "tsx scripts/security-tests.ts && tsx scripts/expiry-tests.ts && tsx scripts/theme-tests.ts",
     "ramp:dev": "npm --prefix ramp-server run dev",
-    "sync:website": "bash scripts/sync-to-website.sh"
+    "sync:website": "bash scripts/sync-to-website.sh",
+    "test:theme": "tsx scripts/theme-tests.ts"
   },
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.19.2",

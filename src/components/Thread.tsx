@@ -220,8 +220,8 @@ function Bubble({ m, item, name, onPay, onCode }: { m: ChatMessage; item?: { sta
       <div
         className="max-w-[82%] space-y-1.5 rounded-2xl px-3.5 py-2.5 text-sm"
         style={{
-          background: mine ? 'rgba(62,217,184,0.16)' : 'var(--surface-muted)',
-          border: `1px solid ${mine ? 'rgba(62,217,184,0.3)' : 'var(--border)'}`,
+          background: mine ? 'var(--tint-accent)' : 'var(--surface-muted)',
+          border: `1px solid ${mine ? 'var(--line-accent)' : 'var(--border)'}`,
         }}
       >
         {m.kind === 'text' && <p className="whitespace-pre-wrap break-words text-pretty">{m.text}</p>}

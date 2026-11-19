@@ -109,7 +109,7 @@ function BuyBody() {
           {status}
         </div>
       )}
-      <div className="flex gap-2 rounded-2xl p-3 text-xs text-pretty" style={{ background: 'rgba(133,177,237,0.14)', color: 'var(--ink-2)' }}>
+      <div className="flex gap-2 rounded-2xl p-3 text-xs text-pretty" style={{ background: 'var(--tint-info)', color: 'var(--ink-2)' }}>
         <Info className="mt-0.5 size-4 shrink-0" />
         <span>
           This is Circle's sandbox, so no real money moves and test purchases may not show up in your balance. For Arc test USDC use Get test USDC in the

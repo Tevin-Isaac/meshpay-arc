@@ -25,7 +25,7 @@ function SecurityBody() {
       <div
         className="flex items-start gap-3 rounded-2xl p-4 text-sm"
         style={{
-          background: protectedNow ? 'rgba(62,217,184,0.1)' : 'rgba(245,166,35,0.12)',
+          background: protectedNow ? 'var(--tint-accent)' : 'var(--tint-warn)',
           color: protectedNow ? 'var(--success)' : 'var(--warn)',
         }}
       >

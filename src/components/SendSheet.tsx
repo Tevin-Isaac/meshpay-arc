@@ -48,7 +48,7 @@ function SendBody({ onClose, prefill }: { onClose: () => void; prefill: SendPref
             style={{
               background: mode === m ? 'var(--surface-strong)' : 'transparent',
               color: mode === m ? 'var(--ink)' : 'var(--muted)',
-              boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,0.5)' : 'none',
+              boxShadow: mode === m ? 'var(--seg-shadow)' : 'none',
             }}
           >
             {m === 'pay' ? 'Pay now (online)' : 'Sign offline'}

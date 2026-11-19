@@ -17,7 +17,7 @@ export function MeshTab() {
     <div className="space-y-3">
       <section className="glass rounded-3xl p-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl" style={{ background: 'rgba(62,217,184,0.14)', color: 'var(--accent)' }}>
+          <div className="flex size-12 items-center justify-center rounded-2xl" style={{ background: 'var(--tint-accent)', color: 'var(--accent)' }}>
             <Radio className="size-6" />
           </div>
           <div>

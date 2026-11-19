@@ -23,6 +23,73 @@
   --warn: #f5a623;
   --pending: #a78bfa;
   --spectral: linear-gradient(90deg, #3ed9b8, #a78bfa, #f5a623);
+  /* tints and surfaces that components used to hard-code */
+  --tint-accent: rgba(62, 217, 184, 0.14);
+  --line-accent: rgba(62, 217, 184, 0.3);
+  --tint-danger: rgba(255, 77, 106, 0.13);
+  --tint-warn: rgba(245, 166, 35, 0.13);
+  --tint-info: rgba(133, 177, 237, 0.14);
+  --tint-neutral: rgba(255, 255, 255, 0.07);
+  --inner-bg: rgba(255, 255, 255, 0.035);
+  --sheet-bg: rgba(12, 12, 22, 0.97);
+  --nav-bg: rgba(15, 15, 26, 0.94);
+  --scrim: rgba(0, 0, 0, 0.65);
+  --grab: rgba(255, 255, 255, 0.2);
+  --seg-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 36px rgba(0, 0, 0, 0.35);
+  --glow-a: rgba(62, 217, 184, 0.16);
+  --glow-b: rgba(167, 139, 250, 0.14);
+  --toast-bg: #0f0f1a;
+  --ob-accent: #3ed9b8;
+  --ob-node: #0f0f1a;
+  --ob-line: #1e1e35;
+  --ob-label: #8888a0;
+  color-scheme: dark;
+}
+
+/* Light theme. Text colours are chosen for WCAG AA on the surfaces they sit on. */
+:root[data-theme='light'] {
+  --bg: #f5f7fa;
+  --bg-gradient: radial-gradient(1200px 520px at 50% -8%, rgba(8, 112, 96, 0.1), transparent 62%), #f5f7fa;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-strong: #ffffff;
+  --surface-muted: #eceff5;
+  --ink: #10131f;
+  --ink-2: #2b3042;
+  --muted: #4d5268;
+  --subtle: #5f647a;
+  --border: #d5dae6;
+  --border-strong: rgba(8, 112, 96, 0.5);
+  --accent: #087060;
+  --on-accent: #ffffff;
+  --accent-hover: #065a4c;
+  --focus: #087060;
+  --success: #087060;
+  --danger: #c01d3c;
+  --warn: #86550a;
+  --pending: #6446c8;
+  --spectral: linear-gradient(90deg, #087060, #6446c8, #c07a0a);
+  --tint-accent: rgba(8, 112, 96, 0.1);
+  --line-accent: rgba(8, 112, 96, 0.3);
+  --tint-danger: rgba(192, 29, 60, 0.09);
+  --tint-warn: rgba(134, 85, 10, 0.1);
+  --tint-info: rgba(40, 100, 190, 0.09);
+  --tint-neutral: rgba(16, 19, 31, 0.06);
+  --inner-bg: rgba(16, 19, 31, 0.03);
+  --sheet-bg: rgba(255, 255, 255, 0.98);
+  --nav-bg: rgba(255, 255, 255, 0.94);
+  --scrim: rgba(16, 19, 34, 0.45);
+  --grab: rgba(16, 19, 31, 0.2);
+  --seg-shadow: 0 1px 3px rgba(16, 19, 31, 0.18);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 28px rgba(30, 40, 80, 0.1);
+  --glow-a: rgba(8, 112, 96, 0.1);
+  --glow-b: rgba(100, 70, 200, 0.08);
+  --toast-bg: #ffffff;
+  --ob-accent: #087060;
+  --ob-node: #ffffff;
+  --ob-line: #b9c1d3;
+  --ob-label: #4d5268;
+  color-scheme: light;
 }
 
 * {
@@ -32,7 +99,6 @@
 
 body {
   margin: 0;
-  color-scheme: dark;
   font-family: 'DM Sans', sans-serif;
   min-height: 100dvh;
   color: var(--ink);
@@ -61,11 +127,11 @@ body {
   border: 1px solid var(--border);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 36px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--glass-shadow);
 }
 
 .inner {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--inner-bg);
   border: 1px solid var(--border);
 }
 
@@ -84,14 +150,14 @@ body {
   left: -8%;
   width: 520px;
   height: 520px;
-  background: radial-gradient(circle, rgba(62, 217, 184, 0.16) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-a) 0%, transparent 70%);
 }
 .page-glow::after {
   bottom: -8%;
   right: -6%;
   width: 480px;
   height: 480px;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.14) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-b) 0%, transparent 70%);
 }
 
 /* Signal travelling along the diagram links */
@@ -146,17 +212,30 @@ select:focus-visible {
   }
 }
 
-/* Toasts follow the dark theme */
-[data-sonner-toaster] {
-  --normal-bg: #0f0f1a;
-  --normal-text: #f5f4f2;
-  --normal-border: #1e1e35;
-  --success-bg: #0f0f1a;
-  --success-text: #3ed9b8;
-  --success-border: rgba(62, 217, 184, 0.35);
-  --error-bg: #0f0f1a;
-  --error-text: #ff4d6a;
-  --error-border: rgba(255, 77, 106, 0.35);
+/* Toasts follow the theme */
+[data-sonner-toaster],
+:root [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--toast-bg);
+  --normal-text: var(--ink);
+  --normal-border: var(--border);
+  --success-bg: var(--toast-bg);
+  --success-text: var(--success);
+  --success-border: var(--line-accent);
+  --error-bg: var(--toast-bg);
+  --error-text: var(--danger);
+  --error-border: var(--tint-danger);
+}
+
+/* Theme-specific images (the dark logo is white strokes, which vanish on light surfaces) */
+:root[data-theme='light'] .only-dark,
+:root:not([data-theme='light']) .only-light {
+  display: none;
+}
+
+/* Placeholders: readable in both themes */
+::placeholder {
+  color: var(--subtle);
+  opacity: 0.8;
 }
 
 /* ---------- onboarding first screen (coin travelling from You to Anyone) ---------- */

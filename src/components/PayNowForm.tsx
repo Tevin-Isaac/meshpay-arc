@@ -114,7 +114,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
     return (
       <div className="space-y-4">
         <div className="inner flex items-center gap-3 rounded-2xl p-4">
-          <span className="flex size-10 items-center justify-center rounded-full" style={{ background: 'rgba(26,128,71,0.12)', color: 'var(--success)' }}>
+          <span className="flex size-10 items-center justify-center rounded-full" style={{ background: 'var(--tint-accent)', color: 'var(--success)' }}>
             <Check className="size-5" />
           </span>
           <div className="text-sm">
@@ -168,7 +168,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
             <div className="display text-2xl font-bold tabular-nums">{amount} USDC</div>
           </div>
           {similar && (
-            <p className="rounded-xl p-3 text-xs font-semibold text-pretty" style={{ background: 'rgba(255,77,106,0.12)', color: 'var(--danger)' }}>
+            <p className="rounded-xl p-3 text-xs font-semibold text-pretty" style={{ background: 'var(--tint-danger)', color: 'var(--danger)' }}>
               This address looks almost like {groupAddress(similar)} but is different. This is a common trick. Only continue if you are sure.
             </p>
           )}

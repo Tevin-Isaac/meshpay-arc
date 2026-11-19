@@ -10,6 +10,7 @@ import { shortAddress } from '@/lib/format'
 import { useMeshState } from '@/lib/store'
 import { useOnrampAvailable } from '@/hooks/useMeshData'
 import { DemoCard } from '../DemoCard'
+import { AppearanceRow } from '../ThemeToggle'
 import { useSheets, type SheetName } from '../shell/useSheets'
 
 function Row({ icon: Icon, title, hint, onClick, warn }: { icon: ComponentType<{ className?: string }>; title: string; hint: string; onClick: () => void; warn?: boolean }) {
@@ -18,7 +19,7 @@ function Row({ icon: Icon, title, hint, onClick, warn }: { icon: ComponentType<{
       <button onClick={onClick} className="flex min-h-16 w-full items-center gap-3 py-3 text-left">
         <span
           className="flex size-10 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: warn ? 'rgba(245,166,35,0.14)' : 'rgba(62,217,184,0.12)', color: warn ? 'var(--warn)' : 'var(--accent)' }}
+          style={{ background: warn ? 'var(--tint-warn)' : 'var(--tint-accent)', color: warn ? 'var(--warn)' : 'var(--accent)' }}
         >
           <Icon className="size-5" />
         </span>
@@ -80,6 +81,10 @@ export function SettingsTab() {
             <Copy className="size-4" />
           </button>
         </div>
+      </section>
+
+      <section className="glass rounded-3xl p-5">
+        <AppearanceRow />
       </section>
 
       <Group title="Protect">

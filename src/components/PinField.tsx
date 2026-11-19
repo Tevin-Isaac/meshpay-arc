@@ -34,7 +34,8 @@ export function AuthShell({ title, children, footer }: { title: ReactNode; child
   return (
     <main className="page-glow relative isolate mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
       <div className="mb-6 flex flex-col items-center gap-3 text-center">
-        <img src={asset('mark.svg')} alt="" className="size-20" />
+        <img src={asset('mark.svg')} alt="" className="only-dark size-20" />
+        <img src={asset('mark-light.svg')} alt="" className="only-light size-20" />
         <div className="mono text-[11px] uppercase tracking-[0.3em]" style={{ color: 'var(--accent)' }}>
           WayaMesh
         </div>

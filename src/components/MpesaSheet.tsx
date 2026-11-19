@@ -65,7 +65,7 @@ function MpesaBody() {
         ))}
       </div>
       {cfg.mock && (
-        <p className="flex gap-2 rounded-2xl p-3 text-xs" style={{ background: 'rgba(245,166,35,0.12)', color: 'var(--ink)' }}>
+        <p className="flex gap-2 rounded-2xl p-3 text-xs" style={{ background: 'var(--tint-warn)', color: 'var(--ink)' }}>
           <Info className="mt-0.5 size-4 shrink-0" style={{ color: 'var(--warn)' }} />
           <span>
             Sandbox. The M-Pesa prompt and payout are simulated at a demo rate of {cfg.usdKes} KES per USD, and no real money moves.{' '}
@@ -203,7 +203,7 @@ function AddMoney({ cfg }: { cfg: RampConfig }) {
         />
       )}
       {done && order && (
-        <div className="space-y-2 rounded-2xl p-4 text-sm" style={{ background: 'rgba(62,217,184,0.1)', border: '1px solid rgba(62,217,184,0.3)' }}>
+        <div className="space-y-2 rounded-2xl p-4 text-sm" style={{ background: 'var(--tint-accent)', border: '1px solid var(--line-accent)' }}>
           <p style={{ color: 'var(--ink)' }}>
             <b>{order.usdc.replace(/0+$/, '').replace(/\.$/, '')} USDC</b> for {order.kes.toLocaleString()} KES
             {order.mpesaReceipt ? ` (receipt ${order.mpesaReceipt})` : ''}.
@@ -376,7 +376,7 @@ function CashOut({ cfg }: { cfg: RampConfig }) {
         />
       )}
       {done && order && (
-        <p className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(62,217,184,0.1)', border: '1px solid rgba(62,217,184,0.3)', color: 'var(--ink)' }}>
+        <p className="rounded-2xl p-4 text-sm" style={{ background: 'var(--tint-accent)', border: '1px solid var(--line-accent)', color: 'var(--ink)' }}>
           <b>{order.kes.toLocaleString()} KES</b> sent to {order.phoneMasked}
           {order.mpesaReceipt ? ` (receipt ${order.mpesaReceipt})` : ''}.
         </p>

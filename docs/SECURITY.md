@@ -41,6 +41,10 @@ What this does and does not give you: it limits how long an honest client and a 
 
 `ramp-server/` is a testnet demo. In mock mode it simulates Safaricom and sends no money. Safeguards in the code, all covered by tests: signed single-use requests, a callback secret token on every Safaricom webhook (the server refuses to start in sandbox or production mode with a weak secret, a non-https callback URL or `ALLOWED_ORIGINS=*`), an amount cap (`MAX_KES`), idempotent payouts (a replayed callback cannot pay twice), reuse protection for deposit hashes, phone numbers masked in API responses, and log redaction of phone numbers, keys and tokens. What it does **not** do: Safaricom does not sign webhooks, so the token plus network allow-listing is all there is; the order store is a JSON file; there is no KYC, AML or per-user daily limit; the treasury key is an environment variable. Running it with real Daraja credentials and real money needs Safaricom approval, a licensed business and a review of its own. See `ramp-server/README.md`.
 
+## Theme script and the CSP
+
+The light/dark preference is applied before first paint by `public/theme-init.js`, a small **external** blocking script. It is loaded with `script-src 'self'`; no inline script was added and the CSP is unchanged. It only reads `localStorage["wayamesh-theme"]` and `prefers-color-scheme` and sets `data-theme` on the page. The preference is not sensitive, but it is shared with the website on the same origin.
+
 ## What is still true
 
 * **Offline payments are provisional until they settle.** A payer can sign conflicting payments, including to another address they control, and the first to settle wins. The contract documents this and does not try to hide it. Receivers should accept offline only what they would trust the payer with. The app flags payments above a limit you set, and shows when a payer's reserve is low or a withdrawal is pending.
