@@ -14,7 +14,11 @@
     "check": "bash scripts/check.sh",
     "contracts:build": "forge build",
     "contracts:test": "forge test",
-    "test:security": "bun run ./scripts/security-tests.ts"
+    "test:security": "tsx scripts/security-tests.ts",
+    "test:expiry": "tsx scripts/expiry-tests.ts",
+    "test": "tsx scripts/security-tests.ts && tsx scripts/expiry-tests.ts",
+    "ramp:dev": "npm --prefix ramp-server run dev",
+    "sync:website": "bash scripts/sync-to-website.sh"
   },
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.19.2",
@@ -60,6 +64,7 @@
     "oxlint-tsgolint": "^7.0.2001",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.0",
     "typescript": "~7.0.2",
     "vite": "^6.0.5",
     "vite-plugin-node-polyfills": "^0.22.0"

@@ -1,3 +1,4 @@
+import { asset } from '@/lib/env'
 import { Download, Film } from 'lucide-react'
 
 /** The two-phone walkthrough, with downloads for sharing. */
@@ -12,8 +13,8 @@ export function DemoCard() {
         Two phones. Chat, sign a payment with no signal, hand it over, and settle it on Arc.
       </p>
       <video
-        src="/wayamesh-demo.mp4"
-        poster="/demo-poster.jpg"
+        src={asset('wayamesh-demo.mp4')}
+        poster={asset('demo-poster.jpg')}
         controls
         playsInline
         preload="none"
@@ -22,7 +23,7 @@ export function DemoCard() {
       />
       <div className="mt-2 grid grid-cols-2 gap-2">
         <a
-          href="/wayamesh-demo.mp4"
+          href={asset('wayamesh-demo.mp4')}
           download="wayamesh-demo.mp4"
           className="flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-semibold "
           style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
@@ -30,7 +31,7 @@ export function DemoCard() {
           <Download className="size-4" /> Video (MP4)
         </a>
         <a
-          href="/wayamesh-demo.gif"
+          href={asset('wayamesh-demo.gif')}
           download="wayamesh-demo.gif"
           className="flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-semibold"
           style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--ink)' }}

@@ -68,8 +68,10 @@ function MpesaBody() {
         <p className="flex gap-2 rounded-2xl p-3 text-xs" style={{ background: 'rgba(245,166,35,0.12)', color: 'var(--ink)' }}>
           <Info className="mt-0.5 size-4 shrink-0" style={{ color: 'var(--warn)' }} />
           <span>
-            Sandbox. The M-Pesa prompt and payout are simulated at a demo rate of {cfg.usdKes} KES per USD, and no real money moves. The USDC is
-            real Arc Testnet test USDC.
+            Sandbox. The M-Pesa prompt and payout are simulated at a demo rate of {cfg.usdKes} KES per USD, and no real money moves.{' '}
+            {cfg.treasuryMock
+              ? 'This server has no treasury key, so no USDC is actually sent either: the transaction hash is made up.'
+              : 'The USDC is Arc Testnet test USDC, which has no market value.'}
           </span>
         </p>
       )}
@@ -142,7 +144,8 @@ function AddMoney({ cfg }: { cfg: RampConfig }) {
     try {
       const o = await startOnramp(getDeviceAccount(), phone, kesN)
       const final = await pollOrder(o.id, setOrder)
-      if (final.status === 'completed') toast.success(`${final.usdc} USDC arrived.`)
+      if (final.status === 'completed') toast.success(cfg.treasuryMock ? `${final.usdc} USDC (simulated, nothing was sent).` : `${final.usdc} USDC arrived.`)
+      else if (final.status !== 'failed') setError('Still waiting for M-Pesa. If you approved the prompt, the USDC arrives shortly. You can close this and check your balance.')
     } catch (e) {
       setError(parseOnchainError(e) ?? (e instanceof Error ? e.message : 'Could not start M-Pesa.'))
     } finally {
@@ -302,6 +305,7 @@ function CashOut({ cfg }: { cfg: RampConfig }) {
       const o = await startOfframp(account, phone, formatUsdc(raw), txHash, deposit)
       setStage(2)
       const final = await pollOrder(o.id, setOrder, { timeoutMs: 4 * 60_000 })
+      if (final.status !== 'completed' && final.status !== 'failed') setError('Still waiting for the M-Pesa payout. It may still arrive; do not send again.')
       if (final.status === 'completed') {
         setStage(4)
         toast.success(`${final.kes.toLocaleString()} KES sent to M-Pesa.`)

@@ -149,12 +149,19 @@ export function useChecks(items: StoredItem[]) {
   return q.data ?? {}
 }
 
-/** The Buy USDC backend only runs next to the dev server. Hide Buy when it is not reachable. */
+/**
+ * The Buy USDC backend (scripts/onramp-server.ts) only runs next to the dev server, reached through the Vite
+ * proxy at /api. A production build does not probe /api at all unless VITE_ONRAMP_API=true is set at build
+ * time, so a build mounted on another site (wayamesh.xyz/app) never calls that site's own /api routes.
+ */
+const ONRAMP_API = import.meta.env.DEV || import.meta.env.VITE_ONRAMP_API === 'true'
+
+/** Hide Buy when the backend is not reachable. */
 export function useOnrampAvailable() {
   const { online } = useNet()
   const q = useQuery({
     queryKey: ['onramp-health'],
-    enabled: online,
+    enabled: online && ONRAMP_API,
     retry: false,
     staleTime: 60_000,
     queryFn: async () => {

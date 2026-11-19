@@ -1,3 +1,4 @@
+import { asset } from '@/lib/env'
 import { ConnectKitButton } from 'connectkit'
 import { Lock, Plane, Wallet } from 'lucide-react'
 import { setSimulatedOffline, useNet } from '@/lib/net'
@@ -13,7 +14,7 @@ export function Header() {
   return (
     <header className="flex items-center justify-between gap-2 pb-1">
       <div className="flex min-w-0 items-center gap-2.5">
-        <img src="/mark.svg" alt="" className="size-10 shrink-0" />
+        <img src={asset('mark.svg')} alt="" className="size-10 shrink-0" />
         <div className="min-w-0">
           <div className="display text-lg font-bold leading-none">
             Waya<span className="serif" style={{ color: 'var(--accent)' }}>Mesh</span>
