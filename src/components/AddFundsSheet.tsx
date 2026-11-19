@@ -259,7 +259,7 @@ function AddFundsBody() {
             </PrimaryButton>
             {tab === 'add' && walletBalance.data === 0n && (
               <p className="text-center text-xs" style={{ color: 'var(--subtle)' }}>
-                No test USDC yet? Use Get test USDC in the Arc Studio sidebar.
+                No test USDC yet? Get free test USDC at faucet.circle.com (choose Arc Testnet).
               </p>
             )}
           </>

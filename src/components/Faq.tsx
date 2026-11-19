@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react'
 const QUESTIONS = [
   {
     q: 'Can I use real money?',
-    a: 'No. This is a testnet demo, so it uses test USDC with no value. Use Get test USDC in the Arc Studio sidebar to fund your wallet.',
+    a: 'No. This is a testnet demo, so it uses test USDC with no value. Get free test USDC at faucet.circle.com (choose Arc Testnet) to fund your wallet.',
   },
   {
     q: 'What stops someone paying the same money twice?',
