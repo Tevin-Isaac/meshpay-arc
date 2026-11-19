@@ -4,7 +4,6 @@ import { fmtExact, fmtUsdc, timeAgo } from '@/lib/format'
 import { roleOf } from '@/lib/items'
 import { useMeshState } from '@/lib/store'
 import { showUsdc } from '@/lib/balance'
-import { NETWORK_LABEL } from '@/lib/network'
 import { useNet } from '@/lib/net'
 import { useBalances, useMyAddresses } from '@/hooks/useMeshData'
 
@@ -57,12 +56,6 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecu
             <span className="size-1.5 rounded-full" style={{ background: 'currentColor' }} />
             {online ? 'Online' : 'Offline'}
           </span>
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-semibold min-[400px]:hidden"
-            style={{ background: 'var(--tint-accent)', color: 'var(--accent-hover)' }}
-          >
-            {NETWORK_LABEL}
-          </span>
         </div>
       </div>
 
@@ -113,20 +106,7 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecu
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between">
-        <button onClick={onLimits} className="flex min-h-11 items-center gap-1 text-xs font-semibold" style={{ color: 'var(--accent-hover)' }}>
-          <Gauge className="size-4" /> Limits
-        </button>
-        <button
-          onClick={onSecurity}
-          className="flex min-h-11 items-center gap-1 text-xs font-semibold"
-          style={{ color: status === 'plain' ? 'var(--warn)' : 'var(--accent-hover)' }}
-        >
-          <ShieldCheck className="size-4" /> Security
-        </button>
-      </div>
-
-      <div className="mt-1 grid grid-cols-4 gap-2">
+      <div className="mt-4 grid grid-cols-4 gap-2">
         {actions.map(({ label, icon: Icon, onClick, primary }) => (
           <button
             key={label}
@@ -142,6 +122,23 @@ export function BalanceCard({ onSend, onReceive, onScan, onAdd, onLimits, onSecu
             {label}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          onClick={onLimits}
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-full text-xs font-semibold"
+          style={{ color: 'var(--accent-hover)', border: '1px solid var(--border)' }}
+        >
+          <Gauge className="size-4" /> Limits
+        </button>
+        <button
+          onClick={onSecurity}
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-full text-xs font-semibold"
+          style={{ color: status === 'plain' ? 'var(--warn)' : 'var(--accent-hover)', border: '1px solid var(--border)' }}
+        >
+          <ShieldCheck className="size-4" /> Security
+        </button>
       </div>
 
       {onMpesa && (
