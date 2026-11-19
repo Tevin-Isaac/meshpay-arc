@@ -7,7 +7,7 @@ Status: **testnet only. Not ready for real money.** This page says what was revi
 * The Solidity contract `MeshPayV2`: two rounds of automated review plus 50 Foundry tests (unit, batch, withdraw, fuzz, invariants).
 * The whole web app: an independent adversarial read of every file in `src/lib`, `src/hooks`, `src/components`, the onramp server, the service worker, the headers and the preview hooks. It found 3 High, 11 Medium and 16 Low issues.
 * Behaviour in a real browser: onboarding, PIN and passphrase, lock and unlock, recovery phrase, backup and restore, guardian recovery, limits, every tab and sheet, encrypted chat online and offline, Autopilot, payments in chat, settlement on Arc Testnet. These runs also ran against the production build under its strict security headers.
-* `bun run test:security`: 33 hostile-input checks (malformed chat messages, forged relay events, malleated signatures, poisoned contact cards, impossible shards, unsafe recipients).
+* `npm run test:security` (or `bun run test:security`): 33 hostile-input checks (malformed chat messages, forged relay events, malleated signatures, poisoned contact cards, impossible shards, unsafe recipients). `npm run test:expiry`: 18 checks for the 24-hour chat expiry.
 
 An AI-assisted review is not an independent audit.
 
@@ -30,6 +30,16 @@ An AI-assisted review is not an independent audit.
 | Medium: preview debugging hooks ran in production | Replaced by empty modules in production builds. |
 | Medium: onramp helper was open to abuse | Rate limits, short signature window, local-only binding, generic errors. |
 | Low (several) | Review step and look-alike warning for Pay now. Money cannot be sent to the empty address, the USDC contract or the settlement contract. Shards are cleared from the clipboard. Shard numbers are range-checked and the recovered address is shown. Settings fail closed. The service worker never caches API calls. Security headers allow only the hosts the app needs. |
+
+## Chat expiry (24 hours)
+
+Every chat message expires 24 hours after the time the sender put in it. The sender tags the relay event with NIP-40 `expiration`, receivers drop messages older than 24 hours, and the app purges expired messages on start, on returning to the foreground, every 5 minutes and when a thread is opened. Contacts, payments, invoices and settlement status are kept.
+
+What this does and does not give you: it limits how long an honest client and a cooperating relay keep a message. It is **not secure deletion**. A relay may ignore the tag, a recipient can screenshot or copy a message, a modified client can keep everything, and a browser profile or backup copied earlier still holds what it held. The wire format did not change, so the sender's timestamp is the only clock; a sender with a wrong clock can send a message that a receiver treats as expired or that lives a little longer (the receiver already refuses timestamps more than a day ahead).
+
+## Money ramp (M-Pesa) hardening
+
+`ramp-server/` is a testnet demo. In mock mode it simulates Safaricom and sends no money. Safeguards in the code, all covered by tests: signed single-use requests, a callback secret token on every Safaricom webhook (the server refuses to start in sandbox or production mode with a weak secret, a non-https callback URL or `ALLOWED_ORIGINS=*`), an amount cap (`MAX_KES`), idempotent payouts (a replayed callback cannot pay twice), reuse protection for deposit hashes, phone numbers masked in API responses, and log redaction of phone numbers, keys and tokens. What it does **not** do: Safaricom does not sign webhooks, so the token plus network allow-listing is all there is; the order store is a JSON file; there is no KYC, AML or per-user daily limit; the treasury key is an environment variable. Running it with real Daraja credentials and real money needs Safaricom approval, a licensed business and a review of its own. See `ramp-server/README.md`.
 
 ## What is still true
 

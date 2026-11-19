@@ -22,10 +22,10 @@ The older v1 contract (`0x41f84ad06cd7f256c67fbb62906899c29611d6ef`) is supersed
 | Offline payment | Raw signed USDC transfer tx | EIP-712 payment voucher settled by the contract | **Replace** with vouchers (section 3). Adds reserve, tips, invoice ref, duplicate rejection |
 | Hand-off | QR, Bluetooth | QR, copy, share | Keep BLE. Carry the new `mp2:` code over it |
 | Courier | Carry a third party's payment | Same, plus courier **tips** and carried chat messages | Add tips (`fee`) and message carrying |
-| Chat | Device-local text | End-to-end encrypted, online via relays, offline via codes, payments and requests in the thread | Port section 5. Mobile SQLite stores messages |
+| Chat | Device-local text | End-to-end encrypted, online via relays, offline via codes, payments and requests in the thread, **every message expires after 24 hours** | Port section 5, including the 24-hour expiry. Mobile SQLite stores messages |
 | Agent wallet | Mandate, standing payments, audit log | Autopilot: standing payments, expiry, total cap, audit log, inside spending limits | Same policy engine. Wire to vouchers |
 | Recovery | Seed, cloud backup, Shamir guardians | Seed, encrypted backup file, Shamir guardians (same shard format) | Format already compatible (section 7) |
-| Add money | Faucet / provider ramp | Circle onramp sandbox widget (server-held key) | Keep mobile provider module |
+| Add money | Faucet / provider ramp | Circle onramp sandbox widget (server-held key), plus M-Pesa through `ramp-server/` (mock mode by default) | Keep mobile provider module. Mobile and web share the same ramp server and signed-request format (section 11) |
 | Smart account / gasless | Circle Paymaster | Not in web | Keep mobile as is |
 | Languages | 9 locales | English only | Keep mobile i18n |
 | USSD | Prototype | Not in web | Keep |
@@ -45,7 +45,7 @@ The older v1 contract (`0x41f84ad06cd7f256c67fbb62906899c29611d6ef`) is supersed
 * **Chat messages:** validate every field before storing (`validateInner` in `src/lib/chat/crypto.ts`): id is 24 hex, time within 90 days back and 1 day ahead, kind in {text, payment, request}, text at most 500 characters, amount matches `^\d{1,12}(\.\d{1,6})?$`, ref is 32 bytes, payment code starts with `mp2:` and is at most 400 characters. Reject payloads over 4 KB. Never show an amount the sender claims: show the amount from the payment code that was verified.
 * **Payments for me:** a received payment counts as mine only if `to` is one of my addresses. Otherwise it is carried and the user is told it is not for them. An invoice is marked paid only by a payment to me that covers its amount.
 * **Signatures:** accept only canonical ones (`v` is 27 or 28, `s` is at most half the curve order). Others can never settle.
-* **Relay events:** ignore events dated more than two days from now, or with content over 12,000 characters. Move the sync cursor only for real messages and never past now. Keep the seen-id set bounded.
+* **Relay events:** ignore events dated more than two days from now, or with content over 12,000 characters. Keep the seen-id set bounded. Subscribe with `since = now - 24h` (section 5.1); there is no persistent sync cursor.
 * **Caps:** unsettled payments 150, stored payments 400, messages 2,500, contacts 300, message requests 40.
 * **Contact cards:** show a confirm screen with the full address. Strip control and direction-changing characters from names.
 * **Recipients:** refuse the zero address, the USDC token contract and the settlement contract.
@@ -126,6 +126,17 @@ The recipient verifies `o` equals their own address, recovers the signer from `s
 
 **Safety number:** `sha256(sorted(pubkeyA, pubkeyB))`, shown as 12 groups of 5 digits. Users mark a contact verified after comparing it.
 
+### 5.1 24-hour expiry (policy, no wire format change)
+
+Every chat message expires at `t + 86400`, where `t` is the sender's timestamp inside the sealed plaintext. The sealed box, plaintext fields, signature and `mpm1:` / `mpc1:` formats are unchanged. The text limit stays 500 characters.
+
+* **Sender:** add the NIP-40 tag `["expiration", String(t + 86400)]` after the `p` tag on the relay event (`tags = [["p", recipientX], ["expiration", "<t+86400>"]]`). A phone that is only carrying someone else's `mpm1:` code cannot read `t`, so it tags `now + 86400`. Relays may or may not honour the tag; nothing relies on it. Never publish a queued message that is already past its 24 hours.
+* **Receiver:** after the box opens and the signature verifies, drop the message if `now >= t + 86400` (do not store it, do not show it). Keep the existing check that `t` is not more than a day in the future.
+* **Subscription:** `since = now - 86400`, recomputed on every (re)connect. Nothing older can still be valid, so there is no sync cursor to persist.
+* **Purge locally** on app start, on returning to the foreground, every 5 minutes while open, and whenever a thread is opened: delete messages with `now >= ts + 86400`, and carried `mpm1:` codes picked up more than 24 hours ago. Purge **messages only**. Keep contacts, payments (`mp2:` vouchers and their settlement status), invoices and the audit log. A payment sent in chat stays in History after its chat bubble is gone.
+* **Honest limits:** this is a client policy. A modified client, a screenshot, a relay that ignores NIP-40, or a backup taken earlier can all keep a message longer. It limits how long an honest client and a cooperating relay hold a message; it is not secure deletion.
+* Reference: `src/lib/chat/expiry.ts`, tests in `scripts/expiry-tests.ts` (`npm run test:expiry`).
+
 ## 6. Autopilot (agent mandate)
 
 Standing payments `{to, amount, every: daily|weekly|monthly, until?, maxTotal?}` are signed locally when due, inside the same per-payment and per-day limits as manual payments. If a limit, expiry or total cap blocks one, it is paused and logged. Every action is written to an audit log. No payee can be added except through the list.
@@ -180,6 +191,8 @@ A port is correct when it reproduces every row, and when a voucher it signs pass
 | Recovery phrase | `src/lib/wallet.ts` |
 | Guardians | `src/lib/guardians.ts` |
 | Chat crypto, relays, service | `src/lib/chat/crypto.ts`, `relay.ts`, `service.ts` |
+| 24-hour expiry (tag, drop, purge) | `src/lib/chat/expiry.ts`, `purgeExpiredMessages` in `src/lib/store.ts`, `usePurgeEngine` in `src/hooks/useEngines.ts` |
+| M-Pesa ramp (server and UI) | `ramp-server/`, `src/lib/ramp.ts`, `src/components/MpesaSheet.tsx` |
 | Signing with limits, tips, refs | `src/lib/pay.ts`, `src/lib/policy.ts` |
 | Receiving checks (expiry window, accept limit, invoices) | `src/lib/ingest.ts`, `src/lib/scan.ts` |
 | Autopilot and chat engines | `src/hooks/useEngines.ts` |
@@ -194,3 +207,11 @@ A port is correct when it reproduces every row, and when a voucher it signs pass
 5. Autopilot: point the existing mandate engine at vouchers, add expiry and total cap.
 6. Keep biometrics, hardware keystore, Paymaster, i18n and USSD as they are.
 7. Third-party audit of the contract and the chat protocol before any mainnet use.
+
+## 11. M-Pesa ramp (testnet demo)
+
+`ramp-server/` is the same Daraja backend that wayamesh-mobile ships in its `server/` folder, plus one extra: `verifyVoucherDeposit`, so a cash out can be paid from the user's MeshPay reserve (a voucher to the treasury, settled on chain) instead of from USDC held on the device. Mobile can send `deposit: "voucher"` the same way.
+
+* Every user request is signed (EIP-191) over `Wayamesh ramp\nAction: <onramp|offramp>\nAddress: <checksummed>\nPhone: <254...>\nAmount: <kes or usdc>\nIssued: <ms>`, valid for 5 minutes, single use. The same message builder is in `ramp-server/src/authMessage.ts` and `src/lib/ramp.ts`.
+* STK transaction type is `MPESA_TX_TYPE`: `paybill` (default, `CustomerPayBillOnline`) or `till` (`CustomerBuyGoodsOnline`). B2C goes to `/mpesa/b2c/v1/paymentrequest`.
+* Mock mode (no Daraja keys) simulates Safaricom. On Arc Testnet this is a demo against test USDC. See `ramp-server/README.md` for what is verified and the go-live steps.

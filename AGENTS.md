@@ -49,6 +49,13 @@ bun run dev
 - Offramp: Circle has no self-serve hosted offramp widget for apps. Cash out sends USDC to the wallet or any address (exchange/off-ramp deposit address). A bank payout needs a licensed provider partnership.
 - Production onramp needs a mainnet API key, KYB, and `ONRAMP_REFERRER_DOMAIN` set to the KYB domain.
 
+## Recent additions
+
+- 24-hour chat expiry: `src/lib/chat/expiry.ts` (tests: `npm run test:expiry`). Relay events carry a NIP-40 expiration tag, receivers drop older messages, `purgeExpiredMessages` runs on start, foreground, every 5 minutes and when a thread opens.
+- M-Pesa ramp: `ramp-server/` (mock mode by default), `src/lib/ramp.ts`, `src/components/MpesaSheet.tsx`. See `ramp-server/README.md`.
+- Mountable build: `VITE_BASE`, `VITE_APP_PATH`, `scripts/sync-to-website.sh <website repo>` for wayamesh.xyz/app.
+- Run checks with npm or bun: `npm test`, `npx tsc --noEmit`, `npx vite build`, `forge test`.
+
 ## WayaMesh v2 (current)
 
 - Settlement contract v2: `MeshPayV2` at `0xd619b77bb8389a632800c300969ef152099f7691` on Arc Testnet (5042002). Constructor: USDC `0x3600000000000000000000000000000000000000`, withdraw delay 86400. 50 Foundry tests pass. Reviewed twice; the bond/shortfall idea was removed after each version opened a new drain path for the payer.
