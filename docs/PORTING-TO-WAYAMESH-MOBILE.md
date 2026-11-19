@@ -118,6 +118,26 @@ Standing payments `{to, amount, every: daily|weekly|monthly, until?, maxTotal?}`
 
 2-of-3 Shamir split of the 32-byte key with `shamirs-secret-sharing`. Payload `{v:1,i,t,n,a:last 8 of address,s:base64 shard}`, the same format as `src/wallet/sss.ts` in wayamesh-mobile, so shards made on either app recover on either app. Recovery verifies the rebuilt key's address ends with `a`.
 
+## 7b. Web-only: "Connect wallet". Do not port it
+
+The web wallet has a **Connect wallet** button (wagmi and ConnectKit) so a browser user can bring an outside wallet such as MetaMask. It is a web convenience, not part of the product model.
+
+What it does on the web:
+
+* **Fund the offline balance:** the connected wallet approves and deposits USDC for this device's address.
+* **Pay now:** online payments come from the connected wallet's USDC.
+* **Pay the network fee** to settle payments for other people.
+* It is optional. Signing offline, chat, Autopilot and guardian recovery all work with only the device key.
+
+What mobile should do instead:
+
+* **Do not add wagmi, ConnectKit or any browser-wallet connector to wayamesh-mobile.** The app is the wallet, with its key in the hardware keystore. A second signing path widens the attack surface for no gain.
+* **Port the intent, not the button:**
+  1. Funding: show the device address and a QR code so the user can send USDC from any other wallet or exchange. If an in-app approval from another wallet is wanted later, use WalletConnect as a separate, optional feature behind its own review.
+  2. Courier tips: a phone that holds a little USDC can settle other people's payments and keep the tip the payer added (`fee` in the payment). This is the part worth adopting on mobile.
+  3. Reserve top-up: the mobile app moves USDC from its own address into the `MeshPayV2` reserve with the device key (approve, then `deposit(account, amount)`). The web "Move received funds" button does exactly this and is the path to copy.
+* The "Buy USDC" and "Cash out" screens on web go through the connected wallet only when one is present. On mobile they always use the device key.
+
 ## 8. Test vectors
 
 Mnemonic `test test test test test test test test test test test junk` (public development phrase, never fund it).
