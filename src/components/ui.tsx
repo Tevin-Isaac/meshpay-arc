@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import { Loader2, X } from 'lucide-react'
@@ -22,7 +23,7 @@ export function Sheet({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -77,7 +78,8 @@ export function Sheet({
           </motion.section>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }
 

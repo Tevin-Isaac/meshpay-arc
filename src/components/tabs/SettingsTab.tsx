@@ -2,7 +2,7 @@ import { IS_MAINNET, NETWORK_LABEL } from '@/lib/network'
 import { useRampConfig } from '@/lib/ramp'
 import { type ComponentType, type ReactNode } from 'react'
 import { ExternalWalletCard } from '../ExternalWallet'
-import { ArrowUpFromLine, ChevronRight, Copy, Droplets, ExternalLink, Gauge, HandCoins, Bot, Link2, ShieldCheck, CreditCard, Smartphone } from 'lucide-react'
+import { Pencil, ArrowUpFromLine, ChevronRight, Copy, Droplets, ExternalLink, Gauge, HandCoins, Bot, Link2, ShieldCheck, CreditCard, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { buildAddressExplorerUrl } from '@/onchain-facts'
 import { CHAIN, MESHPAY_ADDRESS } from '@/lib/mesh'
@@ -70,8 +70,9 @@ function ProfileCard() {
         <Avatar seed={address} name={settings.displayName} size={72} />
         <div className="min-w-0 flex-1">
           <label htmlFor="display-name" className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
-            Your name
+            Wallet name
           </label>
+          <div className="relative">
           <input
             id="display-name"
             value={name}
@@ -82,8 +83,10 @@ function ProfileCard() {
             maxLength={24}
             autoComplete="off"
             className="display w-full truncate bg-transparent text-xl font-bold outline-none"
-            style={{ color: 'var(--ink)', borderBottom: '1px dashed var(--border)' }}
+            style={{ color: 'var(--ink)', borderBottom: '1px dashed var(--border)', paddingRight: 24 }}
           />
+          <Pencil className="pointer-events-none absolute right-0 top-1/2 size-3.5 -translate-y-1/2" style={{ color: 'var(--subtle)' }} aria-hidden="true" />
+          </div>
           <div className="mt-1 flex items-center gap-1.5">
             <span className="mono truncate text-xs" style={{ color: 'var(--muted)' }}>
               {shortAddress(address)}
@@ -100,7 +103,7 @@ function ProfileCard() {
         </div>
       </div>
       <p className="mt-3 text-xs text-pretty" style={{ color: 'var(--muted)' }}>
-        This name is saved only on this device. It goes on your contact card so people you share it with see it.
+        Tap the name to rename your wallet. It shows at the top of the app and on your contact card, and is saved only on this device.
       </p>
       <button
         onClick={() => setCard(true)}
