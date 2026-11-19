@@ -7,12 +7,15 @@ import { toast } from 'sonner'
 import { ExternalLink, Landmark } from 'lucide-react'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
 import { CHAIN, MESHPAY_ABI, MESHPAY_ADDRESS, USDC_ADDRESS } from '@/lib/mesh'
-import { fmtUsdc, shortAddress } from '@/lib/format'
+import { fmtExact, shortAddress } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
 import { useNet } from '@/lib/net'
 import { getDeviceAccount } from '@/lib/store'
 import { useDevice, useDeviceUsdc, useSpendable } from '@/hooks/useMeshData'
+import { IS_MAINNET, NETWORK_LABEL, FAUCET_URL } from '@/lib/network'
+import { showUsdc } from '@/lib/balance'
+import { copyAddress } from './FaucetCard'
 import { useSettle } from '@/hooks/useSettle'
 import { AmountInput, GhostButton, PrimaryButton, Sheet } from './ui'
 
@@ -51,11 +54,10 @@ type Step = 'approve' | 'deposit' | 'cashout' | null
 
 /** Keep a little USDC on the device key so it can still pay a network fee. */
 const DEVICE_KEEP = 100_000n
-const DEVICE_MIN_MOVE = 200_000n
 
 export function AddFundsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Sheet open={open} onClose={onClose} title="Offline balance">
+    <Sheet open={open} onClose={onClose} title="Add funds">
       <AddFundsBody />
     </Sheet>
   )
@@ -128,7 +130,7 @@ function AddFundsBody() {
         chainId: CHAIN.id,
       })
       await client.waitForTransactionReceipt({ hash })
-      toast.success(`Added ${fmtUsdc(raw)} USDC to your offline balance.`)
+      toast.success(`Added ${fmtExact(raw)} USDC to your offline balance.`)
       setAmount('')
       refresh()
     } catch (e) {
@@ -138,28 +140,22 @@ function AddFundsBody() {
     }
   }
 
+  /** Move USDC from the built-in wallet into the offline reserve with the device key: approve, then deposit. */
   const addFromDevice = async () => {
     if (!client) return
-    const raw = deviceUsdc.raw - DEVICE_KEEP
     try {
+      const raw = parseUsdc(amount)
+      if (raw <= 0n) return toast.error('Enter an amount above zero.')
+      if (raw + DEVICE_KEEP > deviceUsdc.raw) return toast.error(`Keep about ${fmtExact(DEVICE_KEEP)} USDC in your wallet for network fees.`)
       const wallet = createWalletClient({ account: getDeviceAccount(), chain: CHAIN, transport: http() })
       setStep('approve')
-      const approveHash = await wallet.writeContract({
-        address: USDC_ADDRESS,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [MESHPAY_ADDRESS, raw],
-      })
+      const approveHash = await wallet.writeContract({ address: USDC_ADDRESS, abi: erc20Abi, functionName: 'approve', args: [MESHPAY_ADDRESS, raw] })
       await client.waitForTransactionReceipt({ hash: approveHash })
       setStep('deposit')
-      const hash = await wallet.writeContract({
-        address: MESHPAY_ADDRESS,
-        abi: MESHPAY_ABI,
-        functionName: 'deposit',
-        args: [device.address, raw],
-      })
+      const hash = await wallet.writeContract({ address: MESHPAY_ADDRESS, abi: MESHPAY_ABI, functionName: 'deposit', args: [device.address, raw] })
       await client.waitForTransactionReceipt({ hash })
-      toast.success(`Moved ${fmtUsdc(raw)} USDC into your offline balance.`)
+      toast.success(`Moved ${fmtExact(raw)} USDC into your offline reserve.`)
+      setAmount('')
       refresh()
     } catch (e) {
       fail(e)
@@ -169,19 +165,19 @@ function AddFundsBody() {
   }
 
   const cashOut = async () => {
-    if (!address) return
-    if (dest && (!isAddress(dest) || dest.toLowerCase() === zeroAddress)) return toast.error('Enter a valid address, or leave it empty to use your wallet.')
+    if (dest && (!isAddress(dest) || dest.toLowerCase() === zeroAddress)) return toast.error('Enter a valid address.')
+    if (!dest && !address) return toast.error('Paste the address to send to: an exchange, an off-ramp or another wallet.')
     const unsafeDest = dest ? unsafeRecipient(dest) : null
     if (unsafeDest) return toast.error(unsafeDest)
     try {
       const raw = parseUsdc(amount)
-      const target = dest ? getAddress(dest) : address
-      const toSelf = target.toLowerCase() === address.toLowerCase()
+      const target = dest ? getAddress(dest) : address!
+      const toSelf = !!address && target.toLowerCase() === address.toLowerCase()
       setStep('cashout')
       const { item } = await createSignedPayment(target, raw, { kind: toSelf ? 'cashout' : undefined, spendable: spendable })
       const result = await settle([item])
       if (result.settled > 0) {
-        toast.success(`Sent ${fmtUsdc(raw)} USDC to ${toSelf ? 'your wallet' : shortAddress(target)}.`)
+        toast.success(`Sent ${fmtExact(raw)} USDC to ${toSelf ? 'your connected wallet' : shortAddress(target)}.`)
         setAmount('')
         refresh()
       } else {
@@ -196,87 +192,154 @@ function AddFundsBody() {
 
   const busy = step !== null
   const stepLabel = step === 'approve' ? 'Approve USDC…' : step === 'deposit' ? 'Depositing…' : step === 'cashout' ? 'Settling…' : ''
-  const cashHint = spendable === null ? undefined : `Offline balance ${fmtUsdc(spendable)} · Max`
-  const addHint = walletBalance.data !== undefined ? `Wallet ${fmtUsdc(walletBalance.data)} · Max` : undefined
-  const hint = tab === 'add' ? addHint : cashHint
-  const maxValue = tab === 'add' ? walletBalance.data : spendable
+  const walletKnown = deviceUsdc.known
+  const maxMove = walletKnown !== null && deviceUsdc.live && walletKnown > DEVICE_KEEP ? walletKnown - DEVICE_KEEP : 0n
 
   return (
-    <>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ background: 'var(--surface-muted)' }}>
-          {(['add', 'cashout'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="min-h-10 rounded-xl text-xs font-semibold"
-              style={{
-                background: tab === t ? 'var(--surface-strong)' : 'transparent',
-                color: tab === t ? 'var(--ink)' : 'var(--muted)',
-                boxShadow: tab === t ? 'var(--seg-shadow)' : 'none',
-              }}
-            >
-              {t === 'add' ? 'Add funds' : 'Cash out'}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ background: 'var(--surface-muted)' }}>
+        {(['add', 'cashout'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => {
+              setTab(t)
+              setAmount('')
+            }}
+            className="min-h-10 rounded-xl text-xs font-semibold"
+            style={{
+              background: tab === t ? 'var(--surface-strong)' : 'transparent',
+              color: tab === t ? 'var(--ink)' : 'var(--muted)',
+              boxShadow: tab === t ? 'var(--seg-shadow)' : 'none',
+            }}
+          >
+            {t === 'add' ? 'Add funds' : 'Cash out'}
+          </button>
+        ))}
+      </div>
 
-        <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-          {tab === 'add'
-            ? 'Move USDC from your wallet into the balance this phone can spend with no internet. You can only add while online.'
-            : 'Send your offline balance to your wallet, or to an exchange or off-ramp deposit address to turn it into cash. Needs a connection.'}
-        </p>
-
-        {!isConnected ? (
-          <ConnectKitButton.Custom>
-            {({ show }) => <PrimaryButton onClick={show}>Connect wallet</PrimaryButton>}
-          </ConnectKitButton.Custom>
-        ) : !online ? (
-          <div className="inner rounded-2xl p-4 text-sm" style={{ color: 'var(--ink-2)' }}>
-            You are offline. Come back when you have a connection.
+      {tab === 'add' ? (
+        <>
+          <div className="inner space-y-1 rounded-2xl p-4 text-sm">
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--muted)' }}>In wallet</span>
+              <span className="font-semibold tabular-nums">{showUsdc(walletKnown, fmtExact)} USDC</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--muted)' }}>Offline reserve</span>
+              <span className="font-semibold tabular-nums">{showUsdc(spendable, fmtExact)} USDC</span>
+            </div>
           </div>
-        ) : (
-          <>
-            <AmountInput
-              value={amount}
-              onChange={setAmount}
-              hint={hint}
-              onHint={maxValue && maxValue > 0n ? () => setAmount(formatUsdc(maxValue)) : undefined}
-            />
-            {tab === 'cashout' && <BankCashOut />}
-            {tab === 'cashout' && (
+
+          <div className="space-y-2 rounded-2xl p-4" style={{ border: '1px solid var(--border)' }}>
+            <div className="text-sm font-semibold">{IS_MAINNET ? 'Add USDC to this wallet' : 'Get test USDC'}</div>
+            <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+              {IS_MAINNET
+                ? 'Copy your address and send USDC on Arc to it from an exchange or another wallet.'
+                : `Free test USDC from Circle: choose ${NETWORK_LABEL}, paste your address and request.`}
+            </p>
+            <div className="flex gap-2">
+              <GhostButton className="flex-1" onClick={() => copyAddress(device.address, 'Address copied.')}>
+                Copy my address
+              </GhostButton>
+              {FAUCET_URL && (
+                <a
+                  href={FAUCET_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl text-sm font-semibold"
+                  style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
+                >
+                  Open faucet <ExternalLink className="size-3.5" />
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Move wallet balance into offline reserve</div>
+            <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+              The reserve is what you can spend with no internet. Moving needs a connection and a little USDC for the network fee.
+            </p>
+            {!online ? (
+              <div className="inner rounded-2xl p-4 text-sm" style={{ color: 'var(--ink-2)' }}>
+                You are offline. Come back when you have a connection.
+              </div>
+            ) : (
+              <>
+                <AmountInput
+                  value={amount}
+                  onChange={setAmount}
+                  hint={walletKnown === null ? undefined : `In wallet ${fmtExact(walletKnown)} · Max`}
+                  onHint={maxMove > 0n ? () => setAmount(formatUsdc(maxMove)) : undefined}
+                />
+                <PrimaryButton onClick={() => void addFromDevice()} loading={busy} disabled={!amount}>
+                  {busy ? stepLabel : 'Move to offline reserve'}
+                </PrimaryButton>
+              </>
+            )}
+          </div>
+
+          <details className="rounded-2xl p-4" style={{ border: '1px solid var(--border)' }}>
+            <summary className="min-h-8 cursor-pointer text-sm font-semibold">Add from a connected wallet (optional)</summary>
+            <div className="mt-3 space-y-3">
+              {!isConnected ? (
+                <>
+                  <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+                    Not needed. Connect only if you prefer to top up from MetaMask or a wallet app. External wallets bring their own risks.
+                  </p>
+                  <ConnectKitButton.Custom>{({ show }) => <GhostButton className="w-full" onClick={show}>Connect an external wallet</GhostButton>}</ConnectKitButton.Custom>
+                </>
+              ) : online ? (
+                <>
+                  <AmountInput
+                    value={amount}
+                    onChange={setAmount}
+                    hint={walletBalance.data !== undefined ? `Connected wallet ${fmtExact(walletBalance.data)} · Max` : undefined}
+                    onHint={walletBalance.data && walletBalance.data > 0n ? () => setAmount(formatUsdc(walletBalance.data!)) : undefined}
+                  />
+                  <PrimaryButton onClick={() => void addFromWallet()} loading={busy} disabled={!amount}>
+                    {busy ? stepLabel : 'Add from connected wallet'}
+                  </PrimaryButton>
+                </>
+              ) : (
+                <p className="text-xs">You are offline.</p>
+              )}
+            </div>
+          </details>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
+            Send your offline reserve to an exchange, an off-ramp deposit address or another wallet. Needs a connection and a little USDC for the network fee.
+          </p>
+          {!online ? (
+            <div className="inner rounded-2xl p-4 text-sm" style={{ color: 'var(--ink-2)' }}>
+              You are offline. Come back when you have a connection.
+            </div>
+          ) : (
+            <>
+              <AmountInput
+                value={amount}
+                onChange={setAmount}
+                hint={spendable === null ? undefined : `Offline reserve ${fmtExact(spendable)} · Max`}
+                onHint={spendable && spendable > 0n ? () => setAmount(formatUsdc(spendable)) : undefined}
+              />
+              <BankCashOut />
               <input
                 value={dest}
                 onChange={(e) => setDest(e.target.value.trim())}
-                placeholder="Send to (optional): 0x… or leave empty for your wallet"
+                placeholder={address ? 'Send to (optional): 0x… or leave empty for your connected wallet' : 'Send to: 0x… address'}
                 spellCheck={false}
                 aria-label="Destination address"
                 className="inner mono min-h-12 w-full rounded-2xl px-4 text-xs outline-none"
               />
-            )}
-            <PrimaryButton onClick={() => void (tab === 'add' ? addFromWallet() : cashOut())} loading={busy} disabled={!amount}>
-              {busy ? stepLabel : tab === 'add' ? 'Add to offline balance' : dest ? 'Cash out to address' : 'Cash out to wallet'}
-            </PrimaryButton>
-            {tab === 'add' && walletBalance.data === 0n && (
-              <p className="text-center text-xs" style={{ color: 'var(--subtle)' }}>
-                No test USDC yet? Get free test USDC at faucet.circle.com (choose Arc Testnet).
-              </p>
-            )}
-          </>
-        )}
-
-        {deviceUsdc.raw >= DEVICE_MIN_MOVE && online && tab === 'add' && (
-          <div className="inner space-y-2 rounded-2xl p-4">
-            <div className="text-sm font-semibold">Received on this device</div>
-            <p className="text-xs text-pretty" style={{ color: 'var(--muted)' }}>
-              {fmtUsdc(deviceUsdc.raw)} USDC arrived at this phone. Move it into your offline balance so you can spend it with no internet.
-            </p>
-            <GhostButton className="w-full" onClick={() => void addFromDevice()} disabled={busy}>
-              Move {fmtUsdc(deviceUsdc.raw - DEVICE_KEEP)} USDC
-            </GhostButton>
-          </div>
-        )}
-      </div>
-    </>
+              <PrimaryButton onClick={() => void cashOut()} loading={busy} disabled={!amount}>
+                {busy ? stepLabel : 'Cash out'}
+              </PrimaryButton>
+            </>
+          )}
+        </>
+      )}
+    </div>
   )
 }

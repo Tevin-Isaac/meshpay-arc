@@ -4,7 +4,7 @@ import { unsafeRecipient } from '@/lib/guard'
 import { toast } from 'sonner'
 import { Bot, Pause, Play, Trash2 } from 'lucide-react'
 import { parseUsdc } from '@/onchain-money'
-import { fmtUsdc, shortAddress } from '@/lib/format'
+import { fmtExact, shortAddress } from '@/lib/format'
 import { addAudit, setStanding, useMeshState, type Standing } from '@/lib/store'
 import { AmountInput, Chip, PrimaryButton, Sheet } from './ui'
 
@@ -84,7 +84,7 @@ function AgentBody() {
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]" style={{ color: 'var(--subtle)' }}>
                   <Chip tone={s.active ? 'good' : 'neutral'}>{s.active ? s.every : 'paused'}</Chip>
                   <span>
-                    {s.paid} signed · {fmtUsdc(BigInt(s.paidTotal ?? '0'))} total
+                    {s.paid} signed · {fmtExact(BigInt(s.paidTotal ?? '0'))} total
                   </span>
                 </div>
               </div>

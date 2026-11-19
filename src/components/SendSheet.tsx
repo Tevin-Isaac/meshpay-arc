@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
 import type { Hex } from 'viem'
 import { useNet } from '@/lib/net'
 import { useMeshState } from '@/lib/store'
+import { useDeviceUsdc, useSpendable } from '@/hooks/useMeshData'
+import { GAS_BUFFER } from '@/lib/balance'
 import { Sheet } from './ui'
 import { PayNowForm } from './PayNowForm'
 import { OfflineSign } from './OfflineSign'
@@ -26,9 +27,12 @@ export function SendSheet({ open, onClose, prefill }: { open: boolean; onClose: 
 
 function SendBody({ onClose, prefill }: { onClose: () => void; prefill: SendPrefill }) {
   const { online } = useNet()
-  const { isConnected } = useAccount()
+  const wallet = useDeviceUsdc()
+  const { spendable } = useSpendable()
   const { contacts } = useMeshState()
-  const [mode, setMode] = useState<'pay' | 'offline'>(online && isConnected ? 'pay' : 'offline')
+  const [picked, setPicked] = useState<'pay' | 'offline' | null>(null)
+  // Online with USDC in the built-in wallet: pay now. Otherwise sign offline from the reserve.
+  const mode = picked ?? (online && wallet.raw > GAS_BUFFER ? 'pay' : online && !(spendable && spendable > 0n) ? 'pay' : 'offline')
   const [to, setTo] = useState(prefill.to ?? '')
   const [amount, setAmount] = useState(prefill.amount ?? '')
 
@@ -43,7 +47,7 @@ function SendBody({ onClose, prefill }: { onClose: () => void; prefill: SendPref
         {(['pay', 'offline'] as const).map((m) => (
           <button
             key={m}
-            onClick={() => setMode(m)}
+            onClick={() => setPicked(m)}
             className="min-h-10 rounded-xl text-xs font-semibold"
             style={{
               background: mode === m ? 'var(--surface-strong)' : 'transparent',

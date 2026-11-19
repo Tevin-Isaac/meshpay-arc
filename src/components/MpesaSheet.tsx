@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { ArrowDownToLine, ArrowUpFromLine, Check, ExternalLink, Info, Loader2, Smartphone } from 'lucide-react'
 import { buildTxExplorerUrl } from '@/onchain-facts'
 import { formatUsdc, parseAmount, parseUsdc, usdcToGasToken } from '@/onchain-money'
-import { fmtUsdc } from '@/lib/format'
+import { fmtExact } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { CHAIN, ZERO_REF } from '@/lib/mesh'
 import { useNet } from '@/lib/net'
@@ -329,7 +329,7 @@ function CashOut({ cfg }: { cfg: RampConfig }) {
         Send USDC from this wallet to an M-Pesa number. It uses the USDC on this device first, then your offline balance.
       </p>
       <p className="text-xs" style={{ color: 'var(--subtle)' }}>
-        Available: {fmtUsdc(direct)} USDC on this device and {fmtUsdc(fromReserve)} USDC offline balance. ({device.address.slice(0, 6)}…{device.address.slice(-4)})
+        Available: {fmtExact(direct)} USDC on this device and {fmtExact(fromReserve)} USDC offline balance. ({device.address.slice(0, 6)}…{device.address.slice(-4)})
       </p>
       <Field title="M-Pesa phone number">
         <input

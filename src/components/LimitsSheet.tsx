@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
-import { fmtUsdc } from '@/lib/format'
+import { fmtExact } from '@/lib/format'
 import { spentToday } from '@/lib/policy'
 import { revealSecret, setPolicy, setSettings, useMeshState } from '@/lib/store'
 import { AmountInput, PrimaryButton, Sheet } from './ui'
@@ -76,7 +76,7 @@ function LimitsBody({ onClose }: { onClose: () => void }) {
           <div className="flex items-baseline justify-between text-xs" style={{ color: 'var(--muted)' }}>
             <span>Spent in the last 24h</span>
             <span className="tabular-nums">
-              {fmtUsdc(used)} of {fmtUsdc(dailyCap)}
+              {fmtExact(used)} of {fmtExact(dailyCap)}
             </span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface-muted)' }}>

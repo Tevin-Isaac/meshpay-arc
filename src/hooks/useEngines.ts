@@ -7,7 +7,7 @@ import { PURGE_INTERVAL_MS, relaySince } from '@/lib/chat/expiry'
 import { startRelays, stopRelays } from '@/lib/chat/relay'
 import { flushOutbox, handleRelayContent, myPubkey, sendChat } from '@/lib/chat/service'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
-import { fmtUsdc } from '@/lib/format'
+import { fmtExact } from '@/lib/format'
 import { toast } from 'sonner'
 
 /** 24-hour chat expiry: purge old messages on start, when the app returns to the foreground, and every 5 minutes. */
@@ -94,8 +94,8 @@ export function useStandingRunner(active: boolean) {
             let next = s.next + PERIOD[s.every]
             while (next <= now) next += PERIOD[s.every]
             update({ next, paid: s.paid + 1, paidTotal: (total + raw).toString() })
-            addAudit(`Signed ${fmtUsdc(raw)} USDC to ${s.name || s.to} (${s.every}).`, 'good')
-            toast.success(`Standing payment signed: ${fmtUsdc(raw)} USDC to ${s.name || s.to}. It settles when any phone is online.`)
+            addAudit(`Signed ${fmtExact(raw)} USDC to ${s.name || s.to} (${s.every}).`, 'good')
+            toast.success(`Standing payment signed: ${fmtExact(raw)} USDC to ${s.name || s.to}. It settles when any phone is online.`)
             const contact = getState().contacts.find((c) => c.address.toLowerCase() === s.to.toLowerCase())
             if (contact) {
               try {

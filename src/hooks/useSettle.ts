@@ -26,13 +26,14 @@ export function useSettle() {
   const deviceUsdc = useDeviceUsdc()
   const [busy, setBusy] = useState(false)
 
-  const via: 'wallet' | 'device' | null = isConnected ? 'wallet' : deviceUsdc.raw >= DEVICE_GAS_FLOOR ? 'device' : null
+  // The built-in device wallet pays the fee when it can. A connected external wallet is only the fallback.
+  const via: 'wallet' | 'device' | null = deviceUsdc.raw >= DEVICE_GAS_FLOOR ? 'device' : isConnected ? 'wallet' : null
 
   const settle = useCallback(
     async (items: StoredItem[]): Promise<SettleResult> => {
       if (!getOnline()) throw new Error('You are offline. Payments stay safe on this phone until you reconnect.')
       if (!client) throw new Error('Network client unavailable.')
-      if (!via) throw new Error('Connect a wallet to pay the small network fee.')
+      if (!via) throw new Error('Get a little test USDC to pay the network fee. Copy your address from Add.')
       setBusy(true)
       try {
         const pending = items.filter((i) => i.status === 'pending')

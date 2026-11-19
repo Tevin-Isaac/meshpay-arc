@@ -1,7 +1,8 @@
-import { ConnectKitButton } from 'connectkit'
 import { toast } from 'sonner'
+import { FAUCET_URL, NETWORK_LABEL, USDC_NAME } from '@/lib/network'
+import { useDevice } from '@/hooks/useMeshData'
 import { CloudUpload, WifiOff } from 'lucide-react'
-import { fmtUsdc } from '@/lib/format'
+import { fmtExact } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { roleOf } from '@/lib/items'
 import { useNet } from '@/lib/net'
@@ -16,6 +17,7 @@ export function SettleCard({ items, onShowCode }: { items: StoredItem[]; onShowC
   const mine = useMyAddresses()
   const checks = useChecks(items)
   const { settle, busy, via } = useSettle()
+  const device = useDevice()
   const pending = items.filter((i) => i.status === 'pending')
   if (pending.length === 0) return null
 
@@ -26,7 +28,7 @@ export function SettleCard({ items, onShowCode }: { items: StoredItem[]; onShowC
       const result = await settle(pending)
       if (result.settled > 0) {
         toast.success(`Settled ${result.settled} payment${result.settled === 1 ? '' : 's'} on Arc.`)
-        if (result.tips > 0n) toast.success(`You earned ${fmtUsdc(result.tips)} USDC in courier tips.`)
+        if (result.tips > 0n) toast.success(`You earned ${fmtExact(result.tips)} USDC in courier tips.`)
       }
       else toast.info('Nothing to settle right now. See each payment for why.')
     } catch (e) {
@@ -41,7 +43,7 @@ export function SettleCard({ items, onShowCode }: { items: StoredItem[]; onShowC
         <div>
           <h2 className="display text-lg font-bold">Waiting to settle</h2>
           <p className="mt-0.5 text-xs text-pretty" style={{ color: 'var(--muted)' }}>
-            {pending.length} payment{pending.length === 1 ? '' : 's'} · {fmtUsdc(total)} USDC held on this phone
+            {pending.length} payment{pending.length === 1 ? '' : 's'} · {fmtExact(total)} USDC held on this phone
           </p>
         </div>
         {!online && (
@@ -68,9 +70,32 @@ export function SettleCard({ items, onShowCode }: { items: StoredItem[]; onShowC
             {busy ? 'Settling on Arc…' : `Settle ${pending.length} on Arc`}
           </PrimaryButton>
         ) : (
-          <ConnectKitButton.Custom>
-            {({ show }) => <PrimaryButton onClick={show}>Connect wallet to settle</PrimaryButton>}
-          </ConnectKitButton.Custom>
+          <div className="space-y-2">
+            <p className="text-center text-xs text-pretty" style={{ color: 'var(--muted)' }}>
+              Get a little {USDC_NAME} to pay the network fee, then settle. Arc charges its small fee in USDC.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <PrimaryButton
+                onClick={() => void navigator.clipboard.writeText(device.address).then(() => toast.success('Address copied. Paste it at the faucet.'), () => toast.error('Could not copy.'))}
+              >
+                Copy my address
+              </PrimaryButton>
+              {FAUCET_URL && (
+              <a
+                href={FAUCET_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-12 items-center justify-center rounded-2xl text-sm font-semibold"
+                style={{ background: 'var(--surface-muted)', color: 'var(--ink)', border: '1px solid var(--border)' }}
+              >
+                Open faucet
+              </a>
+              )}
+            </div>
+            <p className="text-center text-[11px]" style={{ color: 'var(--subtle)' }}>
+              {FAUCET_URL ? `Choose ${NETWORK_LABEL} at the faucet. ` : ''}You can also connect an external wallet in Settings to pay the fee.
+            </p>
+          </div>
         )}
       </div>
     </section>

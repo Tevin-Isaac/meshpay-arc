@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ClipboardPaste } from 'lucide-react'
 import { toast } from 'sonner'
-import { fmtUsdc, shortAddress } from '@/lib/format'
+import { fmtExact, shortAddress } from '@/lib/format'
 import { scan } from '@/lib/scan'
 import type { ContactCard } from '@/lib/chat/crypto'
 import { CardConfirm } from './CardConfirm'
@@ -50,7 +50,7 @@ function ScanBody({ onClose, onRequest }: { onClose: () => void; onRequest: (pre
         else if (result.result === 'carried') toast.success('Carrying this message for someone else. It is delivered when you get a connection.')
         else toast.info('You already have this message.')
       } else {
-        const amount = fmtUsdc(BigInt(result.item.amount))
+        const amount = fmtExact(BigInt(result.item.amount))
         if (!result.added) toast.info('You already hold this payment, or too many are waiting.')
         else if (!result.forMe) toast.warning(`This payment of ${amount} USDC is for ${shortAddress(result.item.to)}, not for you. This phone will carry it and settle it when online.`)
         else if (result.item.risky) toast.warning(`Saved ${amount} USDC, but it is above your offline limit. Wait for it to settle before handing anything over.`)

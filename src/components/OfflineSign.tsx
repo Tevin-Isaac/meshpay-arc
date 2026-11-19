@@ -3,7 +3,7 @@ import { getAddress, isAddress, zeroAddress, type Hex } from 'viem'
 import { toast } from 'sonner'
 import { AlertTriangle, MessageCircle, ShieldCheck, WifiOff } from 'lucide-react'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
-import { fmtUsdc } from '@/lib/format'
+import { fmtExact } from '@/lib/format'
 import { groupAddress, lookalike, unsafeRecipient } from '@/lib/guard'
 import { VOUCHER_TTL_SECONDS } from '@/lib/mesh'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
@@ -92,7 +92,7 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
         <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
           Signed on this phone for{' '}
           <b className="tabular-nums" style={{ color: 'var(--ink)' }}>
-            {fmtUsdc(BigInt(signed.item.amount))} USDC
+            {fmtExact(BigInt(signed.item.amount))} USDC
           </b>
           . Let the receiver scan this code. It can only ever pay the address you reviewed.
         </p>
@@ -124,9 +124,9 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
             </div>
           </div>
           <dl className="space-y-1.5 text-sm tabular-nums">
-            <Row label="Amount" value={`${fmtUsdc(parsed.raw)} USDC`} />
-            {parsed.fee > 0n && <Row label="Courier tip" value={`${fmtUsdc(parsed.fee)} USDC`} />}
-            <Row label="Total from your reserve" value={`${fmtUsdc(total)} USDC`} strong />
+            <Row label="Amount" value={`${fmtExact(parsed.raw)} USDC`} />
+            {parsed.fee > 0n && <Row label="Courier tip" value={`${fmtExact(parsed.fee)} USDC`} />}
+            <Row label="Total from your reserve" value={`${fmtExact(total)} USDC`} strong />
             <Row label="Valid for" value={`${Math.round(VOUCHER_TTL_SECONDS / 3600)} hours`} />
           </dl>
         </div>
@@ -165,7 +165,7 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
       <AmountInput
         value={amount}
         onChange={setAmount}
-        hint={spendable === null ? 'Balance unknown' : `Offline balance ${fmtUsdc(spendable)} · Max`}
+        hint={spendable === null ? 'Balance unknown' : `Offline balance ${fmtExact(spendable)} · Max`}
         onHint={spendable !== null && spendable > 0n ? () => setAmount(formatUsdc(spendable)) : undefined}
       />
       <div className="inner flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5">

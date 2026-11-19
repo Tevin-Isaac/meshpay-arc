@@ -1,6 +1,6 @@
 import { encodeVoucher } from '@/lib/mesh'
 import { toVoucher } from '@/lib/items'
-import { fmtUsdc, shortAddress } from '@/lib/format'
+import { fmtExact, shortAddress } from '@/lib/format'
 import type { StoredItem } from '@/lib/store'
 import { CodeShare } from './CodeShare'
 import { Sheet } from './ui'
@@ -26,7 +26,7 @@ export function CodeSheet({ item, raw, onClose }: { item: StoredItem | null; raw
         item && (
           <div className="space-y-4">
             <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-              {fmtUsdc(BigInt(item.amount))} USDC to <span className="mono">{shortAddress(item.to)}</span>. Any phone that scans this can settle it once it
+              {fmtExact(BigInt(item.amount))} USDC to <span className="mono">{shortAddress(item.to)}</span>. Any phone that scans this can settle it once it
               finds a connection. Duplicates are caught automatically.
             </p>
             <CodeShare code={encodeVoucher(toVoucher(item))} label="Payment QR code" />

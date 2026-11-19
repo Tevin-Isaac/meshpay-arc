@@ -8,6 +8,10 @@ This repo is the **WayaMesh web wallet and the protocol reference implementation
 
 ## How it works
 
+### Works on its own
+
+The wallet is self-sufficient. Everything runs on the device key: **Total balance** is the USDC at the device address plus the spendable offline reserve (reserve minus signed, unsettled payments). Pay now, Add funds, Buy USDC and Settle all use that key; Arc gas is paid in USDC from the same pool. On testnet the Wallet screen has a **Get test USDC** card (copy your address, open Circle's faucet, choose Arc Testnet). Balances are exact and truncated, never rounded up; when offline the last known value is shown, labelled with its age, and `—` when nothing is known. Connecting an external wallet (MetaMask, or a phone wallet app through WalletConnect) is **optional**, lives in Settings under *External wallet (optional)*, and is never required. External wallets bring their own risks. For the WalletConnect option set `VITE_WALLETCONNECT_PROJECT_ID` (free from cloud.reown.com) at build time; without it only browser-extension wallets can connect. If you use it, add the WalletConnect relay and verify hosts to the CSP (already in `public/_headers`).
+
 ### The money model
 
 The settlement contract is **MeshPayV2** on Arc Testnet (`0xd619b77bb8389a632800c300969ef152099f7691`, source in `contracts/MeshPayV2.sol`, withdraw delay 86400 s).
@@ -58,6 +62,7 @@ Also: Autopilot (recurring payments that sign inside your limits, with an audit 
 * `npx vite build`: production build succeeds, including builds mounted under `/app-static/`.
 * `npm run test:security`: 33 hostile-input checks pass.
 * `npm run test:expiry`: 18 checks for the 24-hour expiry pass (tag, drop and purge rules, event validity, unchanged wire format).
+* `npm run test:balance`: 33 checks for balance maths, truncating formatting and the no-external-wallet wiring. `npm run verify:balance [address]` reads `balanceOf` and `reserve()` from the live Arc Testnet RPC (read only) and checks the displayed formatting against them.
 * `npm run test:theme`: 30 checks for the theme preference logic, including that `public/theme-init.js` agrees with it.
 * Light and dark themes in headless Chrome at 390x844 and 1280x800: every screen and sheet captured in both, the header toggle flips the theme and survives a reload, System follows the OS live, and no console errors.
 * `forge test`: 50 contract tests pass (unit, batch, withdraw, fuzz, invariants).
@@ -70,7 +75,7 @@ Also: Autopilot (recurring payments that sign inside your limits, with an audit 
 
 * Real Safaricom (Daraja) calls, STK callbacks, B2C payouts, and cash out against the live chain.
 * An independent audit of the contract. It has none.
-* A funded end-to-end settlement on Arc Testnet from this build; Buy USDC with Circle; Connect wallet with a real browser wallet; Bluetooth (not possible in browsers).
+* A funded end-to-end settlement on Arc Testnet from this build; Buy USDC with Circle; Connecting a real external wallet (optional feature), including WalletConnect, which needs a project id; Bluetooth (not possible in browsers).
 * Live chat through public relays from this build, and relays actually honouring `expiration`.
 * The expiry purge inside the running UI over 24 real hours (the rules are unit-tested; the store wiring is type-checked and exercised only through the app starting).
 

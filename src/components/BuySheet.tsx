@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { ConnectKitButton } from 'connectkit'
 import { AppKit } from '@circle-fin/app-kit'
-import { useAccount, useSignMessage } from 'wagmi'
 import { toast } from 'sonner'
 import { Info } from 'lucide-react'
 import { onrampAuthMessage } from '@/lib/onrampAuth'
 import { parseOnchainError } from '@/lib/errors'
 import { useNet } from '@/lib/net'
+import { getDeviceAccount } from '@/lib/store'
+import { useDevice } from '@/hooks/useMeshData'
+import { IS_MAINNET } from '@/lib/network'
 import { PrimaryButton, Sheet } from './ui'
 
 type Session = Parameters<AppKit['onramp']['mountIframe']>[0]['session']
@@ -20,8 +21,8 @@ export function BuySheet({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function BuyBody() {
-  const { address, isConnected } = useAccount()
-  const { signMessageAsync } = useSignMessage()
+  // USDC is delivered to this device's own wallet. No external wallet is needed.
+  const address = useDevice().address
   const { online } = useNet()
   const [session, setSession] = useState<Session | null>(null)
   const [busy, setBusy] = useState(false)
@@ -29,13 +30,12 @@ function BuyBody() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const start = async () => {
-    if (!address) return
     setBusy(true)
     setStatus(null)
     try {
       // The wallet proves it owns the address; the server mints the session for that address only.
       const issuedAt = Date.now()
-      const signature = await signMessageAsync({ message: onrampAuthMessage(address, issuedAt) })
+      const signature = await getDeviceAccount().signMessage({ message: onrampAuthMessage(address, issuedAt) })
       const res = await fetch('/api/onramp/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,8 +61,8 @@ function BuyBody() {
     const widget = kit.onramp.mountIframe({
       session,
       container,
-      onDepositSubmitted: () => setStatus('Purchase submitted. Funds arrive in your wallet once the payment clears.'),
-      onDepositSettled: () => setStatus('Purchase settled. Check your wallet balance.'),
+      onDepositSubmitted: () => setStatus('Purchase submitted. Funds arrive in this wallet once the payment clears.'),
+      onDepositSettled: () => setStatus('Purchase settled. Check your balance.'),
       onDepositNotCompleted: ({ code }) => setStatus(code === 'CANCELED_BY_CUSTOMER' ? 'Purchase canceled.' : `Purchase not completed (${code}).`),
       onInitializationError: () => setStatus('The purchase window could not load. Try again.'),
       onSessionExpired: () => {
@@ -72,15 +72,6 @@ function BuyBody() {
     })
     return () => widget.close()
   }, [session])
-
-  if (!isConnected) {
-    return (
-      <div className="space-y-4">
-        <Intro />
-        <ConnectKitButton.Custom>{({ show }) => <PrimaryButton onClick={show}>Connect wallet</PrimaryButton>}</ConnectKitButton.Custom>
-      </div>
-    )
-  }
 
   if (!online) {
     return (
@@ -96,10 +87,10 @@ function BuyBody() {
         <>
           <Intro />
           <PrimaryButton onClick={() => void start()} loading={busy}>
-            {busy ? 'Confirm in wallet…' : 'Continue'}
+            {busy ? 'Starting…' : 'Continue'}
           </PrimaryButton>
           <p className="text-center text-xs text-pretty" style={{ color: 'var(--subtle)' }}>
-            You will sign a free message so we know the USDC goes to your wallet.
+            Your wallet signs a free message so we know the USDC goes to this wallet.
           </p>
         </>
       )}
@@ -112,8 +103,7 @@ function BuyBody() {
       <div className="flex gap-2 rounded-2xl p-3 text-xs text-pretty" style={{ background: 'var(--tint-info)', color: 'var(--ink-2)' }}>
         <Info className="mt-0.5 size-4 shrink-0" />
         <span>
-          This is Circle's sandbox, so no real money moves and test purchases may not show up in your balance. For Arc test USDC use Get test USDC in the
-          sidebar.
+          This is Circle's sandbox, so no real money moves and test purchases may not show up in your balance. {IS_MAINNET ? '' : 'For Arc test USDC use Get test USDC on the Wallet screen.'}
         </span>
       </div>
     </div>
@@ -123,7 +113,7 @@ function BuyBody() {
 function Intro() {
   return (
     <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-      Buy USDC with a bank transfer or card. It is delivered to your connected wallet. Then use Add to move it into your offline balance.
+      Buy USDC with a bank transfer or card. It is delivered to this wallet's own address. Then use Add to move some into your offline reserve.
     </p>
   )
 }

@@ -1,6 +1,6 @@
 import { ArrowDownLeft, ArrowUpRight, ExternalLink, QrCode as QrIcon, Repeat2 } from 'lucide-react'
 import { buildTxExplorerUrl } from '@/onchain-facts'
-import { fmtUsdc, shortAddress, timeAgo } from '@/lib/format'
+import { fmtExact, shortAddress, timeAgo } from '@/lib/format'
 import { CHAIN } from '@/lib/mesh'
 import type { Role } from '@/lib/items'
 import type { StoredItem } from '@/lib/store'
@@ -28,7 +28,7 @@ export function ItemRow({
   check?: number
   onShowCode?: () => void
 }) {
-  const amount = fmtUsdc(BigInt(item.amount))
+  const amount = fmtExact(BigInt(item.amount))
   const Icon = role === 'out' ? ArrowUpRight : role === 'in' ? ArrowDownLeft : Repeat2
   const title =
     role === 'out'
@@ -53,7 +53,7 @@ export function ItemRow({
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <StatusChip item={item} check={check} />
           {item.risky && item.status === 'pending' && <Chip tone="warn">Above your limit</Chip>}
-          {BigInt(item.fee ?? '0') > 0n && <Chip>Tip {fmtUsdc(BigInt(item.fee))}</Chip>}
+          {BigInt(item.fee ?? '0') > 0n && <Chip>Tip {fmtExact(BigInt(item.fee))}</Chip>}
           <span className="text-[11px]" style={{ color: 'var(--subtle)' }}>
             {timeAgo(item.createdAt)}
           </span>

@@ -44,7 +44,8 @@ bun run dev
 
 ## Onramp / payments
 
-- Pay now: `src/components/SendSheet.tsx` sends USDC from the connected wallet (plain ERC-20 transfer). Recorded locally as `kind: 'online'`.
+- Pay now: `src/components/PayNowForm.tsx` sends USDC from the device key (plain ERC-20 transfer, gas in USDC). A connected external wallet is an optional second source. Recorded locally as `kind: 'online'`.
+- Connecting a wallet is optional and lives only in Settings (External wallet). No core flow may require it. Balances: `src/lib/balance.ts`, `fmtUsdc` (truncates to 2 dp) and `fmtExact` (up to 6 dp) in `src/lib/format.ts`.
 - Buy USDC: Circle App Kit onramp in sandbox (`api-test.circle.com`, `onramp-sandbox.arc.io`). Backend `scripts/onramp-server.ts` (`bun run server`, port 3001, proxied at `/api` by Vite) mints sessions only after the wallet signs `onrampAuthMessage`. Sandbox test funds land on Ethereum, not Arc.
 - Offramp: Circle has no self-serve hosted offramp widget for apps. Cash out sends USDC to the wallet or any address (exchange/off-ramp deposit address). A bank payout needs a licensed provider partnership.
 - Production onramp needs a mainnet API key, KYB, and `ONRAMP_REFERRER_DOMAIN` set to the KYB domain.

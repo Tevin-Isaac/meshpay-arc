@@ -1,20 +1,24 @@
 import { useState } from 'react'
-import { ConnectKitButton } from 'connectkit'
-import { erc20Abi, getAddress, isAddress, zeroAddress } from 'viem'
+import { createWalletClient, erc20Abi, getAddress, http, isAddress, zeroAddress } from 'viem'
 import { useAccount, usePublicClient, useReadContract, useSwitchChain, useWriteContract } from 'wagmi'
 import { toast } from 'sonner'
 import { Check, ExternalLink, WifiOff } from 'lucide-react'
 import { buildTxExplorerUrl } from '@/onchain-facts'
 import { formatUsdc, parseUsdc } from '@/onchain-money'
-import { fmtUsdc } from '@/lib/format'
+import { fmtExact } from '@/lib/format'
 import { parseOnchainError } from '@/lib/errors'
 import { CHAIN, USDC_ADDRESS, ZERO_REF } from '@/lib/mesh'
 import { groupAddress, lookalike, unsafeRecipient } from '@/lib/guard'
 import { useNet } from '@/lib/net'
-import { addItem, useMeshState } from '@/lib/store'
+import { addItem, getDeviceAccount, useMeshState } from '@/lib/store'
+import { GAS_BUFFER, maxOnline } from '@/lib/balance'
+import { useDeviceUsdc } from '@/hooks/useMeshData'
 import { AmountInput, GhostButton, PrimaryButton } from './ui'
 
-/** Normal online transfer from the connected wallet. Lands in about a second. */
+/**
+ * Normal online transfer. Paid from this device's own wallet by default; a connected external wallet is an
+ * optional second source. Lands in about a second.
+ */
 export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amount: string; setAmount: (v: string) => void; onClose: () => void }) {
   const { address, isConnected, chainId } = useAccount()
   const { online } = useNet()
@@ -22,6 +26,10 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
   const { writeContractAsync } = useWriteContract()
   const { switchChainAsync } = useSwitchChain()
   const [step, setStep] = useState<'wallet' | 'confirming' | null>(null)
+  const [source, setSource] = useState<'device' | 'external'>('device')
+  const device = useDeviceUsdc()
+  const external = isConnected && !!address
+  const from = source === 'external' && external ? 'external' : 'device'
   const [done, setDone] = useState<{ hash: `0x${string}`; amount: bigint } | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const { contacts, items } = useMeshState()
@@ -29,7 +37,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
   const known = [...contacts.map((c) => c.address), ...items.map((i) => i.to)]
   const similar = isAddress(to) ? lookalike(to, known) : null
 
-  const balance = useReadContract({
+  const extBalance = useReadContract({
     address: USDC_ADDRESS,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -37,6 +45,12 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
     chainId: CHAIN.id,
     query: { enabled: !!address && online, refetchInterval: 8000 },
   })
+  // The balance the payment draws on, and the largest amount that still leaves the fee.
+  const balance = {
+    data: from === 'external' ? extBalance.data : device.live ? device.raw : undefined,
+    refetch: () => (from === 'external' ? extBalance.refetch() : device.refetch()),
+  }
+  const maxAmount = from === 'external' ? balance.data : balance.data === undefined ? undefined : maxOnline(balance.data)
 
   const check = (): bigint | null => {
     if (!isAddress(to) || to.toLowerCase() === zeroAddress) {
@@ -63,23 +77,33 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
       toast.error('That is more than your wallet balance.')
       return null
     }
+    if (from === 'device' && balance.data !== undefined && raw + GAS_BUFFER > balance.data) {
+      toast.error(`Keep about ${fmtExact(GAS_BUFFER)} USDC for the network fee. Send a little less.`)
+      return null
+    }
     return raw
   }
 
   const pay = async () => {
-    if (!address || !client) return
+    if (!client) return
     const raw = check()
     if (raw === null) return
     try {
-      if (chainId !== CHAIN.id) await switchChainAsync({ chainId: CHAIN.id })
-      setStep('wallet')
-      const hash = await writeContractAsync({
-        address: USDC_ADDRESS,
-        abi: erc20Abi,
-        functionName: 'transfer',
-        args: [getAddress(to), raw],
-        chainId: CHAIN.id,
-      })
+      let hash: `0x${string}`
+      let payer: `0x${string}`
+      if (from === 'external' && address) {
+        payer = address
+        if (chainId !== CHAIN.id) await switchChainAsync({ chainId: CHAIN.id })
+        setStep('wallet')
+        hash = await writeContractAsync({ address: USDC_ADDRESS, abi: erc20Abi, functionName: 'transfer', args: [getAddress(to), raw], chainId: CHAIN.id })
+      } else {
+        // The built-in wallet signs with the device key. No external wallet is involved.
+        const account = getDeviceAccount()
+        payer = account.address
+        setStep('confirming')
+        const wallet = createWalletClient({ account, chain: CHAIN, transport: http() })
+        hash = await wallet.writeContract({ address: USDC_ADDRESS, abi: erc20Abi, functionName: 'transfer', args: [getAddress(to), raw] })
+      }
       setStep('confirming')
       const receipt = await client.waitForTransactionReceipt({ hash })
       if (receipt.status !== 'success') throw new Error('The transfer reverted.')
@@ -87,7 +111,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
         id: `online:${hash}`,
         source: 'signed',
         kind: 'online',
-        from: address,
+        from: payer,
         to: getAddress(to),
         amount: raw.toString(),
         fee: '0',
@@ -119,7 +143,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
           </span>
           <div className="text-sm">
             <div className="font-semibold" style={{ color: 'var(--success)' }}>
-              Sent {fmtUsdc(done.amount)} USDC
+              Sent {fmtExact(done.amount)} USDC
             </div>
             <a
               href={buildTxExplorerUrl(CHAIN.id, done.hash)}
@@ -137,10 +161,6 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
     )
   }
 
-  if (!isConnected) {
-    return <ConnectKitButton.Custom>{({ show }) => <PrimaryButton onClick={show}>Connect wallet to pay now</PrimaryButton>}</ConnectKitButton.Custom>
-  }
-
   if (!online) {
     return (
       <div className="inner flex items-center gap-2 rounded-2xl px-3 py-3 text-xs text-pretty" style={{ color: 'var(--ink-2)' }}>
@@ -152,12 +172,32 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
 
   return (
     <>
+      {external && (
+        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
+          <span>Pay from</span>
+          <button
+            onClick={() => setSource(from === 'device' ? 'external' : 'device')}
+            className="inner min-h-9 rounded-full px-3 font-semibold"
+            style={{ color: 'var(--ink)' }}
+            aria-label={from === 'device' ? 'Pay from connected wallet instead' : 'Pay from this wallet instead'}
+          >
+            {from === 'device' ? 'This wallet · Pay from connected wallet instead' : 'Connected wallet · Use this wallet instead'}
+          </button>
+        </div>
+      )}
       <AmountInput
         value={amount}
         onChange={setAmount}
-        hint={balance.data === undefined ? undefined : `Wallet ${fmtUsdc(balance.data)} · Max`}
-        onHint={balance.data && balance.data > 0n ? () => setAmount(formatUsdc(balance.data)) : undefined}
+        hint={balance.data === undefined ? undefined : `${from === 'external' ? 'Connected wallet' : 'In wallet'} ${fmtExact(balance.data)} · Max`}
+        onHint={maxAmount && maxAmount > 0n ? () => setAmount(formatUsdc(maxAmount)) : undefined}
       />
+      {from === 'device' && (
+        <p className="text-xs text-pretty" style={{ color: 'var(--subtle)' }}>
+          {balance.data !== undefined && balance.data <= GAS_BUFFER
+            ? 'Your wallet has too little USDC to pay now. Add some from Add, or use Sign offline from your reserve.'
+            : `The network fee is paid in USDC from your wallet (keep about ${fmtExact(GAS_BUFFER)}).`}
+        </p>
+      )}
       {reviewing ? (
         <div className="space-y-3">
           <div className="inner space-y-2 rounded-2xl p-4 text-sm">
@@ -177,7 +217,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
               Back
             </GhostButton>
             <PrimaryButton onClick={() => void pay()} loading={step !== null}>
-              {step === 'wallet' ? 'Confirm in wallet…' : step === 'confirming' ? 'Confirming…' : 'Confirm and pay'}
+              {step === 'wallet' ? 'Confirm in your connected wallet…' : step === 'confirming' ? 'Confirming…' : 'Confirm and pay'}
             </PrimaryButton>
           </div>
         </div>
