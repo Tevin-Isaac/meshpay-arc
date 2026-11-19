@@ -9,6 +9,8 @@ import { recoverKey } from '@/lib/guardians'
 import { pinProblem } from '@/lib/vault'
 import { isValidMnemonic, keyFromMnemonic, newMnemonic, normalizeMnemonic } from '@/lib/wallet'
 import { AuthShell, PinField } from './PinField'
+import { OnboardingHero, OnboardingMesh } from './OnboardingHero'
+import { asset } from '@/lib/env'
 import { GhostButton, PrimaryButton } from './ui'
 
 function pickPositions(count: number): number[] {
@@ -33,38 +35,42 @@ export function Onboarding() {
 
   if (step === 'welcome') {
     return (
-      <AuthShell
-        title={
-          <>
-            Money that moves <span className="serif" style={{ color: 'var(--accent)' }}>off the grid</span>
-          </>
-        }
-      >
-        <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
-          Self-custody USDC on Arc. Sign payments with no internet, hand them over by QR code, and chat privately online or off.
-        </p>
-        <PrimaryButton
-          onClick={() => {
-            setMnemonic(newMnemonic())
-            setFrom('create')
-            setStep('phrase')
-          }}
-        >
-          Create a new wallet
-        </PrimaryButton>
-        <GhostButton
-          className="w-full"
-          onClick={() => {
-            setFrom('import')
-            setStep('import')
-          }}
-        >
-          I already have a recovery phrase
-        </GhostButton>
-        <p className="text-[11px]" style={{ color: 'var(--subtle)' }}>
-          {IS_MAINNET ? 'Arc mainnet. Real USDC. Beta: keep only small amounts here.' : 'Arc Testnet. Test USDC only.'}
-        </p>
-      </AuthShell>
+      <main className="ob">
+        <OnboardingMesh />
+        <div className="ob-brand">
+          <img src={asset('mark.svg')} alt="" />
+          <div className="ob-wordmark">WAYAMESH</div>
+        </div>
+        <div className="ob-brand" style={{ gap: 8 }}>
+          <OnboardingHero />
+          <h1 className="ob-headline display">
+            Send money
+            <br />
+            <span className="serif">off the grid.</span>
+          </h1>
+        </div>
+        <div className="ob-ctas">
+          <PrimaryButton
+            onClick={() => {
+              setMnemonic(newMnemonic())
+              setFrom('create')
+              setStep('phrase')
+            }}
+          >
+            Create Wallet
+          </PrimaryButton>
+          <GhostButton
+            className="w-full"
+            onClick={() => {
+              setFrom('import')
+              setStep('import')
+            }}
+          >
+            Import existing wallet
+          </GhostButton>
+          <p className="ob-note">{IS_MAINNET ? 'Arc mainnet. Real USDC. Beta: keep only small amounts here.' : 'Arc Testnet. Test USDC only.'}</p>
+        </div>
+      </main>
     )
   }
 

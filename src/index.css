@@ -158,3 +158,20 @@ select:focus-visible {
   --error-text: #ff4d6a;
   --error-border: rgba(255, 77, 106, 0.35);
 }
+
+/* ---------- onboarding first screen (coin travelling from You to Anyone) ---------- */
+.ob { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 16px; padding: 28px 24px 22px; position: relative; overflow: hidden; max-width: 520px; margin: 0 auto; isolation: isolate; }
+.ob > * { position: relative; z-index: 1; }
+.ob > .ob-mesh { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.5; }
+.ob-brand { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ob-brand img { width: 72px; height: 72px; }
+.ob-wordmark { font-size: 14px; font-weight: 800; color: var(--accent); letter-spacing: 6px; }
+.ob-headline { font-size: 32px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.2; text-align: center; }
+.ob-headline .serif { font-size: 38px; color: var(--accent); }
+.ob-hero { position: relative; width: 320px; max-width: 100%; }
+.ob-hero svg { width: 100%; height: auto; display: block; }
+.ob-coin { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: #2775ca; border: 1px solid rgba(255,255,255,0.35); color: #fff; font-weight: 700; display: grid; place-items: center; offset-path: path('M58 124 Q160 36 262 124'); animation: ob-coin 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@keyframes ob-coin { 0% { offset-distance: 0%; opacity: 0; } 8% { opacity: 1; } 74% { opacity: 1; } 86%, 100% { offset-distance: 100%; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ob-coin { animation: none; offset-distance: 50%; opacity: 1; } }
+.ob-ctas { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.ob-note { font-size: 11px; color: var(--subtle); text-align: center; }
