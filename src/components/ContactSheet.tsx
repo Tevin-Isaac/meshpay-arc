@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ClipboardPaste } from 'lucide-react'
 import { toast } from 'sonner'
 import { shortAddress } from '@/lib/format'
-import { useMeshState } from '@/lib/store'
+import { setSettings, useMeshState } from '@/lib/store'
 import { encodeCard, type ContactCard } from '@/lib/chat/crypto'
 import { scan } from '@/lib/scan'
 import { myCard } from '@/lib/chat/service'
@@ -40,6 +40,19 @@ function ContactBody({ onClose }: { onClose: () => void }) {
       <p className="text-sm text-pretty" style={{ color: 'var(--muted)' }}>
         Share your card once with someone you trust. It lets you message and pay each other, end-to-end encrypted, online or off.
       </p>
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold" style={{ color: 'var(--subtle)' }}>
+          Your name on the card
+        </span>
+        <input
+          defaultValue={settings.displayName}
+          onChange={(e) => setSettings({ displayName: e.target.value.replace(/[\u0000-\u001f]/g, '').slice(0, 24) })}
+          placeholder="Your wallet"
+          maxLength={24}
+          aria-label="Your name on the card"
+          className="inner min-h-11 w-full rounded-2xl px-4 text-sm outline-none"
+        />
+      </label>
       <CodeShare code={encodeCard(myCard(settings.displayName))} label="Your contact card" />
       <p className="mono text-center text-xs" style={{ color: 'var(--subtle)' }}>
         {shortAddress(address)}

@@ -13,6 +13,7 @@ import { useNet } from '@/lib/net'
 import { addItem, getDeviceAccount, useMeshState } from '@/lib/store'
 import { GAS_BUFFER, maxOnline } from '@/lib/balance'
 import { useDeviceUsdc } from '@/hooks/useMeshData'
+import { SaveAsContact } from './ContactActions'
 import { AmountInput, GhostButton, PrimaryButton } from './ui'
 
 /**
@@ -156,6 +157,7 @@ export function PayNowForm({ to, amount, setAmount, onClose }: { to: string; amo
             </a>
           </div>
         </div>
+        <SaveAsContact address={to} />
         <PrimaryButton onClick={onClose}>Done</PrimaryButton>
       </div>
     )

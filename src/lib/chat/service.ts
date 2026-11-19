@@ -60,6 +60,7 @@ export interface Content {
 
 /** Encrypts, stores and (when possible) sends a message. Offline it waits in the outbox and has a hand-over code. */
 export async function sendChat(contact: Contact, content: Content, voucherId?: string): Promise<ChatMessage> {
+  if (!contact.pubkey) throw new Error('Add their contact card to chat. You can still pay them.')
   const account = getDeviceAccount()
   const inner = await buildInner(account, contact.address, content)
   const box = sealBox(packInner(inner), contact.pubkey)
@@ -88,7 +89,7 @@ export async function flushOutbox(): Promise<void> {
   const { messages, contacts, carried } = getState()
   for (const m of messages.filter((x) => x.dir === 'out' && x.status === 'queued' && x.code)) {
     const contact = contacts.find((c) => c.address.toLowerCase() === m.peer.toLowerCase())
-    if (!contact || !m.code) continue
+    if (!contact || !m.code || !contact.pubkey) continue
     await tryPublish(m.id, decodeMessageCode(m.code).box, contact.pubkey, Math.floor(m.ts / 1000))
   }
   for (const c of carried.filter((x) => !x.published)) {

@@ -33,7 +33,7 @@ export function CardConfirm({ card, onDone }: { card: ContactCard; onDone: () =>
           You already have a contact called {same.name} with a different address. Check this is the right person.
         </p>
       )}
-      {existing && existing.pubkey !== card.pubkey && (
+      {existing && existing.pubkey && existing.pubkey !== card.pubkey && (
         <p className="text-xs font-semibold" style={{ color: 'var(--danger)' }}>
           This address is already a contact, but its encryption key is different. Only continue if they confirmed a new device.
         </p>

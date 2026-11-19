@@ -4,7 +4,8 @@ import { toast } from 'sonner'
 import { parseUsdc } from '@/onchain-money'
 import { randomRef } from '@/lib/mesh'
 import { fmtDecimal, timeAgo } from '@/lib/format'
-import { addInvoice, purgeExpiredMessages, patchContact, removeContact, removeMessagesFrom, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
+import { DeleteContactSheet } from './ContactActions'
+import { addInvoice, purgeExpiredMessages, patchContact, removeMessagesFrom, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { safetyNumber } from '@/lib/chat/crypto'
 import { myPubkey, sendChat } from '@/lib/chat/service'
 import { useNet } from '@/lib/net'
@@ -23,6 +24,7 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
   const [asking, setAsking] = useState(false)
   const [askAmount, setAskAmount] = useState('')
   const [info, setInfo] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [offlineCode, setOfflineCode] = useState<string | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
@@ -69,7 +71,7 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
   }
 
   const connected = online && relays.connected > 0
-  const number = safetyNumber(myPubkey(), contact.pubkey)
+  const number = contact.pubkey ? safetyNumber(myPubkey(), contact.pubkey) : ''
 
   return (
     <div className="flex min-h-[70dvh] flex-col">
@@ -102,6 +104,11 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
               className="inner min-h-11 w-full rounded-xl px-3 text-sm outline-none"
             />
           </label>
+          {!contact.pubkey && (
+            <p className="text-pretty font-semibold" style={{ color: 'var(--warn)' }}>
+              Saved by address. You can pay them. To chat, add their contact card.
+            </p>
+          )}
           <div className="flex items-center gap-1.5 font-semibold">
             <ShieldCheck className="size-4" style={{ color: 'var(--accent)' }} /> Safety number
           </div>
@@ -114,14 +121,8 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
           </GhostButton>
           <div className="grid grid-cols-2 gap-2">
             <GhostButton onClick={() => removeMessagesFrom(contact.address)}>Clear messages</GhostButton>
-            <GhostButton
-              onClick={() => {
-                removeMessagesFrom(contact.address)
-                removeContact(contact.address)
-                onBack()
-              }}
-            >
-              Block and delete
+            <GhostButton onClick={() => setDeleting(true)} style={{ color: 'var(--danger)' }}>
+              Delete contact
             </GhostButton>
           </div>
         </div>
@@ -197,6 +198,7 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
           </div>
         </div>
       )}
+      <DeleteContactSheet contact={deleting ? contact : null} onClose={() => setDeleting(false)} onDeleted={onBack} />
       <OfflineCode code={offlineCode} onClose={() => setOfflineCode(null)} />
     </div>
   )

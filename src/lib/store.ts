@@ -50,8 +50,8 @@ export interface Policy {
 export interface Contact {
   address: Address
   name: string
-  /** Compressed secp256k1 public key, used to encrypt messages to this person. */
-  pubkey: Hex
+  /** Compressed secp256k1 public key, used to encrypt messages to this person. Empty for a contact saved by address only (they can be paid, but not messaged until their card is added). */
+  pubkey: Hex | ''
   verified: boolean
   addedAt: number
   /** A stranger who wrote first. Stays in the requests folder until accepted. */
@@ -609,6 +609,29 @@ export function upsertContact(c: Contact): boolean {
 
 export function patchContact(address: Address, patch: Partial<Contact>) {
   commit({ ...d(), contacts: d().contacts.map((c) => (c.address.toLowerCase() === address.toLowerCase() ? { ...c, ...patch } : c)) })
+}
+
+/** Saves someone by address alone (for example after paying them). They can be paid at once and messaged once their card is added. */
+export function saveContactByAddress(address: Address, name: string): boolean {
+  const existing = d().contacts.find((x) => x.address.toLowerCase() === address.toLowerCase())
+  if (existing) {
+    if (name && name !== existing.name) patchContact(existing.address, { name })
+    return true
+  }
+  return upsertContact({ address, name: name.trim().slice(0, 24) || `${address.slice(0, 6)}…${address.slice(-4)}`, pubkey: '', verified: false, addedAt: Date.now(), request: false })
+}
+
+/**
+ * Deletes a contact and the messages exchanged with them, in one save. Payments, invoices and history are never touched.
+ * (Contacts are also never touched by the 24-hour message purge.)
+ */
+export function deleteContact(address: Address) {
+  const a = address.toLowerCase()
+  commit({
+    ...d(),
+    contacts: d().contacts.filter((c) => c.address.toLowerCase() !== a),
+    messages: d().messages.filter((m) => m.peer.toLowerCase() !== a),
+  })
 }
 
 export function removeContact(address: Address) {

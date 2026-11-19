@@ -1,3 +1,4 @@
+import { SaveAsContact } from './ContactActions'
 import { useState } from 'react'
 import { getAddress, isAddress, zeroAddress, type Hex } from 'viem'
 import { toast } from 'sonner'
@@ -102,6 +103,7 @@ export function OfflineSign({ to, amount, setAmount, invoiceRef, onClose }: Prop
             <MessageCircle className="size-4" /> Also send to {contact.name} in chat
           </GhostButton>
         )}
+        <SaveAsContact address={to} />
         <PrimaryButton onClick={onClose}>Done</PrimaryButton>
       </div>
     )

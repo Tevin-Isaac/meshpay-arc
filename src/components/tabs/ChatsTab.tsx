@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { MessageSquarePlus, ShieldQuestion, UserPlus } from 'lucide-react'
+import { MessageSquarePlus, ShieldQuestion, Trash2, UserPlus } from 'lucide-react'
 import { fmtDecimal, timeAgo } from '@/lib/format'
 import { patchContact, removeContact, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { ContactSheet } from '../ContactSheet'
+import { DeleteContactSheet } from '../ContactActions'
 import { Thread } from '../Thread'
 import { PrimaryButton } from '../ui'
 
@@ -18,6 +19,7 @@ export function ChatsTab() {
   const { contacts, messages } = useMeshState()
   const [openAddress, setOpenAddress] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
+  const [deleting, setDeleting] = useState<Contact | null>(null)
 
   const last = useMemo(() => {
     const map = new Map<string, ChatMessage>()
@@ -41,7 +43,8 @@ export function ChatsTab() {
     const m = last.get(c.address.toLowerCase())
     return (
       <li key={c.address}>
-        <button onClick={() => setOpenAddress(c.address)} className="flex min-h-16 w-full items-center gap-3 py-3 text-left">
+        <div className="flex items-center gap-1">
+        <button onClick={() => setOpenAddress(c.address)} className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-3 text-left">
           <div
             className="display flex size-11 shrink-0 items-center justify-center rounded-full text-base font-bold"
             style={{ background: 'var(--tint-accent)', color: 'var(--accent)' }}
@@ -60,6 +63,16 @@ export function ChatsTab() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setDeleting(c)}
+          aria-label={`Delete contact ${c.name}`}
+          title="Delete contact"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full"
+          style={{ color: 'var(--subtle)' }}
+        >
+          <Trash2 className="size-4" />
+        </button>
+        </div>
       </li>
     )
   }
@@ -92,6 +105,11 @@ export function ChatsTab() {
           <ul className="mt-1 divide-y" style={{ borderColor: 'var(--border)' }}>
             {friends.map(row)}
           </ul>
+        )}
+        {friends.length > 0 && (
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--subtle)' }}>
+            Saved contacts stay until you delete them.
+          </p>
         )}
       </section>
 
@@ -126,6 +144,7 @@ export function ChatsTab() {
           </ul>
         </section>
       )}
+      <DeleteContactSheet contact={deleting} onClose={() => setDeleting(null)} />
       <ContactSheet open={cardOpen} onClose={() => setCardOpen(false)} />
     </div>
   )
