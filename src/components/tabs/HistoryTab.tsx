@@ -3,6 +3,7 @@ import { roleOf } from '@/lib/items'
 import { useMeshState } from '@/lib/store'
 import { useChecks, useMyAddresses } from '@/hooks/useMeshData'
 import { ItemRow } from '../ItemRow'
+import { SaveContactSheet } from '../ContactActions'
 import { useSheets } from '../shell/useSheets'
 
 type Filter = 'all' | 'sent' | 'received' | 'pending'
@@ -11,6 +12,7 @@ export function HistoryTab() {
   const { items } = useMeshState()
   const mine = useMyAddresses()
   const sheets = useSheets()
+  const [saving, setSaving] = useState<string | null>(null)
   const checks = useChecks(items)
   const [filter, setFilter] = useState<Filter>('all')
 
@@ -50,10 +52,11 @@ export function HistoryTab() {
       ) : (
         <ul className="mt-2 divide-y" style={{ borderColor: 'var(--border)' }}>
           {shown.map((i) => (
-            <ItemRow key={i.id} item={i} role={roleOf(i, mine)} check={checks[i.id]} onShowCode={() => sheets.showCode(i)} />
+            <ItemRow key={i.id} item={i} role={roleOf(i, mine)} check={checks[i.id]} onShowCode={() => sheets.showCode(i)} onSave={setSaving} />
           ))}
         </ul>
       )}
+      <SaveContactSheet address={saving} onClose={() => setSaving(null)} />
     </section>
   )
 }

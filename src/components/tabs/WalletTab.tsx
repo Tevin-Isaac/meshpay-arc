@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useRampConfig } from '@/lib/ramp'
 import { ChevronRight } from 'lucide-react'
 import { roleOf } from '@/lib/items'
@@ -8,11 +9,13 @@ import { GetStarted } from '../GetStarted'
 import { FaucetCard } from '../FaucetCard'
 import { SettleCard } from '../SettleCard'
 import { ItemRow } from '../ItemRow'
+import { SaveContactSheet } from '../ContactActions'
 import { useSheets } from '../shell/useSheets'
 
 export function WalletTab() {
   const { items } = useMeshState()
   const sheets = useSheets()
+  const [saving, setSaving] = useState<string | null>(null)
   const mine = useMyAddresses()
   const canBuy = useOnrampAvailable()
   const ramp = useRampConfig()
@@ -48,11 +51,12 @@ export function WalletTab() {
         ) : (
           <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {recent.map((i) => (
-              <ItemRow key={i.id} item={i} role={roleOf(i, mine)} />
+              <ItemRow key={i.id} item={i} role={roleOf(i, mine)} onSave={setSaving} />
             ))}
           </ul>
         )}
       </section>
+      <SaveContactSheet address={saving} onClose={() => setSaving(null)} />
     </div>
   )
 }

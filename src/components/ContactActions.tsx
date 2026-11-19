@@ -39,7 +39,7 @@ export function DeleteContactSheet({ contact, onClose, onDeleted }: { contact: C
 }
 
 /** One tap after paying someone who is not a contact yet: give them a name and keep them. */
-export function SaveAsContact({ address }: { address: string }) {
+export function SaveAsContact({ address, onSaved }: { address: string; onSaved?: () => void }) {
   const { contacts } = useMeshState()
   const [name, setName] = useState('')
   if (!isAddress(address)) return null
@@ -60,12 +60,34 @@ export function SaveAsContact({ address }: { address: string }) {
       <GhostButton
         className="w-full"
         onClick={() => {
-          if (saveContactByAddress(getAddress(address), name.trim())) toast.success('Saved. They are in your Chats.')
+          if (saveContactByAddress(getAddress(address), name.trim())) {
+            toast.success('Saved. They are in your Chats.')
+            onSaved?.()
+          }
           else toast.error('Your contact list is full.')
         }}
       >
         Save contact
       </GhostButton>
     </div>
+  )
+}
+
+/** Opens from a History row: name someone you paid or were paid by and keep them, so you can message them. */
+export function SaveContactSheet({ address, onClose }: { address: string | null; onClose: () => void }) {
+  return (
+    <Sheet open={!!address} onClose={onClose} title="Save contact">
+      {address && (
+        <div className="space-y-4">
+          <p className="mono break-all text-xs" style={{ color: 'var(--muted)' }}>
+            {address}
+          </p>
+          <SaveAsContact address={address} onSaved={onClose} />
+          <p className="text-xs text-pretty" style={{ color: 'var(--subtle)' }}>
+            Once saved they appear in Chats. If they have Wayamesh open, chat switches on by itself.
+          </p>
+        </div>
+      )}
+    </Sheet>
   )
 }

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { CHAIN, MESHPAY_ADDRESS, USDC_ADDRESS, ZERO_REF } from './mesh'
 import { requireChain } from '@/onchain-facts'
 import { fmtExact, shortAddress } from './format'
-import { addItem, getState, updateItem, type StoredItem } from './store'
+import { addItem, getState, saveContactByAddress, updateItem, type StoredItem } from './store'
 
 /**
  * Reads this wallet's real USDC transfers from the chain so History shows money that arrives (and
@@ -143,7 +143,19 @@ function announce(item: StoredItem) {
   const amount = fmtExact(BigInt(item.amount))
   const who = lc(item.from) === lc(MESHPAY_ADDRESS) ? 'your offline reserve' : nameFor(item.from)
   const text = `Received ${amount} USDC from ${who}`
-  toast.success(text, { duration: 10000 })
+  const who2 = lc(item.from) !== lc(MESHPAY_ADDRESS) && !getState().contacts.some((c) => lc(c.address) === lc(item.from))
+  toast.success(text, {
+    duration: 12000,
+    action: who2
+      ? {
+          label: 'Save contact',
+          onClick: () => {
+            saveContactByAddress(getAddress(item.from), '')
+            toast.success('Saved. Open Chats to rename them or send a message.')
+          },
+        }
+      : undefined,
+  })
   try {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
       new Notification('Wayamesh', { body: text, tag: item.id })

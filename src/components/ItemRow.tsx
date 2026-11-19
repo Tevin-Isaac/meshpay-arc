@@ -1,10 +1,12 @@
-import { ArrowDownLeft, ArrowUpRight, ExternalLink, QrCode as QrIcon, Repeat2 } from 'lucide-react'
+import { UserPlus, ArrowDownLeft, ArrowUpRight, ExternalLink, QrCode as QrIcon, Repeat2 } from 'lucide-react'
 import { buildTxExplorerUrl } from '@/onchain-facts'
 import { fmtExact, shortAddress, timeAgo } from '@/lib/format'
 import { CHAIN } from '@/lib/mesh'
 import type { Role } from '@/lib/items'
 import { useMeshState, type StoredItem } from '@/lib/store'
 import { Chip } from './ui'
+import { MESHPAY_ADDRESS } from '@/lib/mesh'
+import { isMine } from '@/lib/mine'
 
 function StatusChip({ item, check }: { item: StoredItem; check?: number }) {
   if (item.status === 'settled') return <Chip tone="good">Settled</Chip>
@@ -22,15 +24,20 @@ export function ItemRow({
   role,
   check,
   onShowCode,
+  onSave,
 }: {
   item: StoredItem
   role: Role
   check?: number
   onShowCode?: () => void
+  /** Offered for someone who is not a saved contact yet. */
+  onSave?: (address: string) => void
 }) {
   const { contacts } = useMeshState()
   const nameOf = (a: string) => contacts.find((c) => c.address.toLowerCase() === a.toLowerCase())?.name || shortAddress(a)
   const amount = fmtExact(BigInt(item.amount))
+  const other = role === 'out' ? item.to : role === 'in' ? item.from : null
+  const canSave = !!other && !!onSave && !item.label && !isMine(other) && other.toLowerCase() !== MESHPAY_ADDRESS.toLowerCase() && !contacts.some((c) => c.address.toLowerCase() === other.toLowerCase())
   const Icon = role === 'out' ? ArrowUpRight : role === 'in' ? ArrowDownLeft : Repeat2
   const title =
     item.label === 'deposit'
@@ -69,6 +76,17 @@ export function ItemRow({
         </div>
       </div>
       <div className="flex items-center gap-1">
+        {canSave && other && (
+          <button
+            onClick={() => onSave?.(other)}
+            aria-label={`Save ${shortAddress(other)} as a contact`}
+            title="Save contact"
+            className="flex size-11 items-center justify-center rounded-full"
+            style={{ color: 'var(--accent-hover)' }}
+          >
+            <UserPlus className="size-4" />
+          </button>
+        )}
         <div className="display text-right text-base font-semibold tabular-nums" style={{ color }}>
           {sign}
           {amount}
