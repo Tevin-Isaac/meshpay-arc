@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { parseUsdc } from '@/onchain-money'
 import { randomRef } from '@/lib/mesh'
 import { fmtDecimal, timeAgo } from '@/lib/format'
-import { addInvoice, patchContact, removeContact, removeMessagesFrom, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
+import { addInvoice, purgeExpiredMessages, patchContact, removeContact, removeMessagesFrom, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { safetyNumber } from '@/lib/chat/crypto'
 import { myPubkey, sendChat } from '@/lib/chat/service'
 import { useNet } from '@/lib/net'
@@ -30,6 +30,9 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
     () => messages.filter((m) => m.peer.toLowerCase() === contact.address.toLowerCase()).sort((a, b) => a.ts - b.ts),
     [messages, contact.address],
   )
+  useEffect(() => {
+    purgeExpiredMessages() // opening a thread drops anything older than 24 hours
+  }, [contact.address])
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' })
   }, [thread.length])
@@ -124,6 +127,9 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
         </div>
       )}
 
+      <p className="pb-2 text-center text-xs" style={{ color: 'var(--subtle)' }}>
+        Messages disappear from this device after 24 hours. Payments and their status stay.
+      </p>
       <div className="flex-1 space-y-2 pb-3" aria-live="polite">
         {thread.length === 0 && (
           <p className="py-10 text-center text-sm text-pretty" style={{ color: 'var(--subtle)' }}>

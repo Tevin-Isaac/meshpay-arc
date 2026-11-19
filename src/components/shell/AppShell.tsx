@@ -1,3 +1,4 @@
+import { BASE_URL, SW_SCOPE, SW_URL } from '@/lib/env'
 import { useCallback, useEffect, useState } from 'react'
 import { Clock, MessagesSquare, Radio, Settings, Wallet } from 'lucide-react'
 import { useAccount } from 'wagmi'
@@ -5,7 +6,7 @@ import { setConnectedWallet } from '@/lib/mine'
 import { onStorageFailure, useMeshState } from '@/lib/store'
 import { toast } from 'sonner'
 import { ErrorBoundary } from '../ErrorBoundary'
-import { useChatEngine, useStandingRunner } from '@/hooks/useEngines'
+import { useChatEngine, usePurgeEngine, useStandingRunner } from '@/hooks/useEngines'
 import { Header } from '../Header'
 import { WalletTab } from '../tabs/WalletTab'
 import { ChatsTab } from '../tabs/ChatsTab'
@@ -30,6 +31,7 @@ export function AppShell() {
   const goTab = useCallback((t: TabName) => setTab(t), [])
   const ready = status === 'unlocked' || status === 'plain'
   useChatEngine(ready)
+  usePurgeEngine(ready)
   useStandingRunner(ready)
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function AppShell() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
+      navigator.serviceWorker.register(`${SW_URL}?base=${encodeURIComponent(BASE_URL)}`, { scope: SW_SCOPE }).catch(() => {
         // the offline shell is a bonus; the app still works online
       })
     }

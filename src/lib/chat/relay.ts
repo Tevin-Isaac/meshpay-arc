@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { relaySince } from './expiry'
 import { RELAY_KIND, relayEventValid, type RelayEvent } from './crypto'
 
 /**
@@ -33,7 +34,7 @@ function emit() {
 
 function sendReq(c: Conn) {
   if (!c.ws || !c.open || !filter) return
-  c.ws.send(JSON.stringify(['REQ', 'meshpay', { kinds: [RELAY_KIND], '#p': [filter.x], since: filter.since }]))
+  c.ws.send(JSON.stringify(['REQ', 'meshpay', { kinds: [RELAY_KIND], '#p': [filter.x], since: Math.max(filter.since, relaySince()) }]))
 }
 
 function connect(c: Conn) {

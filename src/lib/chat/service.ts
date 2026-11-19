@@ -2,6 +2,7 @@ import type { Hex } from 'viem'
 import { formatUsdc } from '@/onchain-money'
 import { fromB64Url } from '../mesh'
 import { ingestVoucher } from '../ingest'
+import { isExpired, expiresAt } from './expiry'
 import { getDeviceAccount, getDeviceKey, getState, addCarried, addMessage, markCarriedPublished, patchContact, updateMessage, upsertContact, type ChatMessage, type Contact } from '../store'
 import { getOnline } from '../net'
 import {
@@ -41,9 +42,10 @@ export function addContactFromCard(card: ContactCard) {
   })
 }
 
-async function tryPublish(id: string, box: Uint8Array, recipientPub: Hex): Promise<boolean> {
+async function tryPublish(id: string, box: Uint8Array, recipientPub: Hex, sentAt: number): Promise<boolean> {
   if (!getOnline() || relayStatus().connected === 0) return false
-  const acks = await publish(buildRelayEvent(xonlyOf(recipientPub), box))
+  if (isExpired(sentAt)) return false // past its 24 hours: never publish
+  const acks = await publish(buildRelayEvent(xonlyOf(recipientPub), box, sentAt))
   if (acks > 0) updateMessage(id, { status: 'sent' })
   return acks > 0
 }
@@ -76,7 +78,7 @@ export async function sendChat(contact: Contact, content: Content, voucherId?: s
     code: encodeMessageCode(contact.pubkey, box),
   }
   addMessage(msg)
-  await tryPublish(msg.id, box, contact.pubkey)
+  await tryPublish(msg.id, box, contact.pubkey, inner.t)
   return msg
 }
 
@@ -87,7 +89,7 @@ export async function flushOutbox(): Promise<void> {
   for (const m of messages.filter((x) => x.dir === 'out' && x.status === 'queued' && x.code)) {
     const contact = contacts.find((c) => c.address.toLowerCase() === m.peer.toLowerCase())
     if (!contact || !m.code) continue
-    await tryPublish(m.id, decodeMessageCode(m.code).box, contact.pubkey)
+    await tryPublish(m.id, decodeMessageCode(m.code).box, contact.pubkey, Math.floor(m.ts / 1000))
   }
   for (const c of carried.filter((x) => !x.published)) {
     try {
@@ -99,7 +101,7 @@ export async function flushOutbox(): Promise<void> {
   }
 }
 
-export type BoxResult = 'delivered' | 'duplicate' | 'invalid'
+export type BoxResult = 'delivered' | 'duplicate' | 'invalid' | 'expired'
 
 /** Opens a sealed box addressed to this wallet, checks the sender, and stores the message. */
 export async function handleBox(box: Uint8Array): Promise<BoxResult> {
@@ -112,6 +114,7 @@ export async function handleBox(box: Uint8Array): Promise<BoxResult> {
   } catch {
     return 'invalid'
   }
+  if (isExpired(inner.t)) return 'expired' // 24-hour policy: older than a day is dropped, never stored
   const state = getState()
   if (state.messages.some((m) => m.id === inner.i)) return 'duplicate'
 
@@ -170,7 +173,7 @@ export async function handleRelayContent(content: string): Promise<BoxResult> {
   }
 }
 
-export type OfflineResult = 'delivered' | 'duplicate' | 'carried' | 'invalid'
+export type OfflineResult = 'delivered' | 'duplicate' | 'carried' | 'invalid' | 'expired'
 
 /** An offline message code: either for me, or something to carry to the internet for someone else. */
 export async function ingestMessageCode(code: string): Promise<OfflineResult> {

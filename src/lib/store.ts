@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { keepLive, keepLiveCarried } from './chat/expiry'
 import type { Address, Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
@@ -611,6 +612,15 @@ export function addMessage(m: ChatMessage): boolean {
 /** Deletes a whole conversation from this device. */
 export function removeMessagesFrom(peer: Address) {
   commit({ ...d(), messages: d().messages.filter((m) => m.peer.toLowerCase() !== peer.toLowerCase()) })
+}
+
+/** Removes messages (and carried offline codes) older than 24 hours. Leaves contacts, payments, invoices untouched. */
+export function purgeExpiredMessages(nowMs = Date.now()): number {
+  const messages = keepLive(d().messages, nowMs)
+  const carried = keepLiveCarried(d().carried, nowMs)
+  const removed = d().messages.length - messages.length + (d().carried.length - carried.length)
+  if (removed > 0) commit({ ...d(), messages, carried })
+  return removed
 }
 
 export function updateMessage(id: string, patch: Partial<ChatMessage>) {

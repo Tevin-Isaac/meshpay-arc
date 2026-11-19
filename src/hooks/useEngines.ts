@@ -1,13 +1,33 @@
 import { useEffect } from 'react'
 import { parseUsdc } from '@/onchain-money'
-import { getState, addAudit, setRelaySince, setStanding, useMeshState, type Standing } from '@/lib/store'
+import { getState, addAudit, purgeExpiredMessages, setStanding, useMeshState, type Standing } from '@/lib/store'
 import { useNet } from '@/lib/net'
 import { xonlyOf } from '@/lib/chat/crypto'
+import { PURGE_INTERVAL_MS, relaySince } from '@/lib/chat/expiry'
 import { startRelays, stopRelays } from '@/lib/chat/relay'
 import { flushOutbox, handleRelayContent, myPubkey, sendChat } from '@/lib/chat/service'
 import { createSignedPayment, PaymentBlocked } from '@/lib/pay'
 import { fmtUsdc } from '@/lib/format'
 import { toast } from 'sonner'
+
+/** 24-hour chat expiry: purge old messages on start, when the app returns to the foreground, and every 5 minutes. */
+export function usePurgeEngine(active: boolean) {
+  useEffect(() => {
+    if (!active) return
+    purgeExpiredMessages()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') purgeExpiredMessages()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    const timer = setInterval(() => purgeExpiredMessages(), PURGE_INTERVAL_MS)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+      clearInterval(timer)
+    }
+  }, [active])
+}
 
 /** Keeps the encrypted chat connected to relays while you are online, and delivers anything that was waiting. */
 export function useChatEngine(active: boolean) {
@@ -21,12 +41,9 @@ export function useChatEngine(active: boolean) {
       return
     }
     const urls = relaysKey.split(',').filter(Boolean)
-    const since = Math.max(0, (getState().relaySince || Math.floor(Date.now() / 1000) - 7 * 86400) - 600)
-    startRelays(urls, xonlyOf(myPubkey()), since, (event) => {
-      void handleRelayContent(event.content).then((res) => {
-        // Only move the cursor for real messages, and never past now, so a forged timestamp cannot hide future mail.
-        if (res === 'delivered' || res === 'duplicate') setRelaySince(Math.min(event.created_at, Math.floor(Date.now() / 1000)))
-      })
+    // Nothing older than 24 hours can still be valid, so never ask relays for more.
+    startRelays(urls, xonlyOf(myPubkey()), relaySince(), (event) => {
+      void handleRelayContent(event.content)
     })
     const timer = setInterval(() => void flushOutbox(), 5000)
     return () => {

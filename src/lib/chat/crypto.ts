@@ -1,4 +1,5 @@
 import { schnorr, secp256k1 } from '@noble/curves/secp256k1'
+import { expirationTag } from './expiry'
 import { xchacha20poly1305 } from '@noble/ciphers/chacha'
 import { hkdf } from '@noble/hashes/hkdf'
 import { sha256 } from '@noble/hashes/sha256'
@@ -246,11 +247,12 @@ export interface RelayEvent {
   sig: string
 }
 
-export function buildRelayEvent(recipientX: string, box: Uint8Array): RelayEvent {
+/** `sentAt` (seconds) is the message time; it sets the NIP-40 expiration tag. Omit it for carried codes (expires 24h from now). */
+export function buildRelayEvent(recipientX: string, box: Uint8Array, sentAt?: number): RelayEvent {
   const sk = schnorr.utils.randomPrivateKey()
   const pubkey = bytesToHex(schnorr.getPublicKey(sk)).slice(2)
   const created_at = Math.floor(Date.now() / 1000)
-  const tags = [['p', recipientX]]
+  const tags = [['p', recipientX], expirationTag(sentAt ?? created_at)]
   const content = toB64Url(box)
   const id = bytesToHex(sha256(te.encode(JSON.stringify([0, pubkey, created_at, RELAY_KIND, tags, content])))).slice(2)
   const sig = bytesToHex(schnorr.sign(hexToBytes(`0x${id}`), sk)).slice(2)
