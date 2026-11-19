@@ -5,7 +5,8 @@ import { useAccount, usePublicClient, useReadContract } from 'wagmi'
 import { CHAIN, MESHPAY_ABI, MESHPAY_ADDRESS, USDC_ADDRESS } from '@/lib/mesh'
 import { toPayment } from '@/lib/items'
 import { useNet } from '@/lib/net'
-import { getDeviceAccount, setReserveCache, updateItem, useMeshState, type StoredItem } from '@/lib/store'
+import { spendableOf, totalBalance } from '@/lib/balance'
+import { getDeviceAccount, setReserveCache, setWalletCache, updateItem, useMeshState, type StoredItem } from '@/lib/store'
 
 export function useDevice() {
   const { status } = useMeshState()
@@ -52,11 +53,11 @@ export function useSpendable() {
   const committed = items
     .filter((i) => i.source === 'signed' && i.status === 'pending')
     .reduce((sum, i) => sum + BigInt(i.amount) + BigInt(i.fee ?? '0'), 0n)
-  const spendable = reserve.raw === null ? null : reserve.raw > committed ? reserve.raw - committed : 0n
+  const spendable = spendableOf(reserve.raw, committed)
   return { reserve, committed, spendable }
 }
 
-/** USDC in the connected wallet, for paying online. Null when no wallet is connected. */
+/** USDC in the optionally connected external wallet. Null when none is connected. */
 export function useWalletUsdc() {
   const { address } = useAccount()
   const { online } = useNet()
@@ -71,10 +72,14 @@ export function useWalletUsdc() {
   return address && q.data !== undefined ? q.data : null
 }
 
-/** USDC received straight to the device address (the same pool that pays its network fees). */
+/**
+ * USDC at the device address: the built-in wallet balance. It also pays network fees (Arc gas is USDC).
+ * `raw` is the live figure (0 until read, safe for gating actions); `known` falls back to the last value seen.
+ */
 export function useDeviceUsdc() {
   const device = useDevice()
   const { online } = useNet()
+  const { walletCache } = useMeshState()
   const q = useReadContract({
     address: USDC_ADDRESS,
     abi: erc20Abi,
@@ -83,7 +88,24 @@ export function useDeviceUsdc() {
     chainId: CHAIN.id,
     query: { enabled: online, refetchInterval: 8000 },
   })
-  return { raw: q.data ?? 0n, refetch: q.refetch }
+
+  useEffect(() => {
+    if (q.data !== undefined) setWalletCache(q.data)
+  }, [q.data])
+
+  const live = online && q.data !== undefined
+  const known = live ? q.data! : walletCache ? BigInt(walletCache.raw) : null
+  return { raw: live ? q.data! : 0n, known, live, at: walletCache?.at ?? null, refetch: q.refetch }
+}
+
+/** Everything the balance card shows, from the device wallet alone. */
+export function useBalances() {
+  const wallet = useDeviceUsdc()
+  const { reserve, committed, spendable } = useSpendable()
+  const total = totalBalance(wallet.known, spendable)
+  const live = wallet.live && reserve.live
+  const at = live ? null : Math.min(wallet.at ?? Infinity, reserve.at ?? Infinity)
+  return { wallet, reserve, committed, spendable, total, live, at: at === null || at === Infinity ? null : at }
 }
 
 /** Asks the contract about every pending payment while online and settles obvious outcomes. */

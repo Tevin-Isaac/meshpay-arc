@@ -10,6 +10,9 @@ import { requireChain } from '@/onchain-facts'
  */
 export const IS_MAINNET = ENV.VITE_NETWORK === 'mainnet'
 export const NETWORK_LABEL = IS_MAINNET ? 'Arc' : 'Arc Testnet'
+/** Testnet USDC has no value and comes from a faucet. Mainnet says plain USDC and has no faucet. */
+export const USDC_NAME = IS_MAINNET ? 'USDC' : 'test USDC'
+export const FAUCET_URL = IS_MAINNET ? null : 'https://faucet.circle.com'
 
 const mainnetFacts = requireChain(5042)
 const arcMainnet = defineChain({

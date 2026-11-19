@@ -16,9 +16,11 @@
     "contracts:test": "forge test",
     "test:security": "tsx scripts/security-tests.ts",
     "test:expiry": "tsx scripts/expiry-tests.ts",
-    "test": "tsx scripts/security-tests.ts && tsx scripts/expiry-tests.ts && tsx scripts/theme-tests.ts",
+    "test": "tsx scripts/balance-tests.ts && tsx scripts/security-tests.ts && tsx scripts/expiry-tests.ts && tsx scripts/theme-tests.ts",
     "ramp:dev": "npm --prefix ramp-server run dev",
     "sync:website": "bash scripts/sync-to-website.sh",
+    "test:balance": "tsx scripts/balance-tests.ts",
+    "verify:balance": "tsx scripts/verify-balance-live.ts",
     "test:theme": "tsx scripts/theme-tests.ts"
   },
   "dependencies": {

@@ -1,33 +1,28 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Connectivity as the app sees it. `simulated` lets you rehearse the offline
- * flow in a browser where you cannot easily pull the network cable.
+ * Connectivity as the browser reports it (navigator.onLine and the online/offline events).
+ * There is no manual override: what the app shows is the real state of the connection.
  */
-let browserOnline = typeof navigator === 'undefined' ? true : navigator.onLine
-let simulated = false
+let online = typeof navigator === 'undefined' ? true : navigator.onLine
 const listeners = new Set<() => void>()
-let snapshot = { online: browserOnline && !simulated, simulated, browserOnline }
+let snapshot = { online }
 
 function emit() {
-  snapshot = { online: browserOnline && !simulated, simulated, browserOnline }
+  if (snapshot.online === online) return
+  snapshot = { online }
   listeners.forEach((l) => l())
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    browserOnline = true
+    online = true
     emit()
   })
   window.addEventListener('offline', () => {
-    browserOnline = false
+    online = false
     emit()
   })
-}
-
-export function setSimulatedOffline(value: boolean) {
-  simulated = value
-  emit()
 }
 
 function subscribe(listener: () => void) {

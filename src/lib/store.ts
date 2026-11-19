@@ -121,12 +121,16 @@ export interface Settings {
   acceptLimit: string
   tip: string
   relays: string[]
+  /** Name shown in the profile and put on the contact card. Empty means 'Your wallet'. */
+  displayName: string
 }
 
 export interface Data {
   policy: Policy
   items: StoredItem[]
   reserveCache: { raw: string; at: number } | null
+  /** Last USDC balance seen at the device address, for showing a clearly marked 'last known' value offline. */
+  walletCache: { raw: string; at: number } | null
   contacts: Contact[]
   messages: ChatMessage[]
   carried: Carried[]
@@ -144,12 +148,13 @@ function emptyData(): Data {
     policy: { perTx: '50', daily: '200' },
     items: [],
     reserveCache: null,
+    walletCache: null,
     contacts: [],
     messages: [],
     carried: [],
     standing: [],
     invoices: [],
-    settings: { autoLockMinutes: 2, hideBalances: false, acceptLimit: '25', tip: '0', relays: DEFAULT_RELAYS },
+    settings: { autoLockMinutes: 2, hideBalances: false, acceptLimit: '25', tip: '0', relays: DEFAULT_RELAYS, displayName: '' },
     relaySince: 0,
     audit: [],
   }
@@ -175,6 +180,8 @@ export function sanitizeData(input: unknown): Data {
     items: asArray<StoredItem>(d.items, CAPS.items).filter((i) => i && typeof i.id === 'string' && typeof i.amount === 'string'),
     reserveCache:
       d.reserveCache && typeof d.reserveCache.raw === 'string' && typeof d.reserveCache.at === 'number' ? d.reserveCache : null,
+    walletCache:
+      d.walletCache && typeof d.walletCache.raw === 'string' && /^\d{1,40}$/.test(d.walletCache.raw) && typeof d.walletCache.at === 'number' ? d.walletCache : null,
     contacts: asArray<Contact>(d.contacts, CAPS.contacts).filter((c) => c && typeof c.address === 'string' && typeof c.pubkey === 'string'),
     messages: asArray<ChatMessage>(d.messages, CAPS.messages).filter((m) => m && typeof m.id === 'string' && typeof m.peer === 'string'),
     carried: asArray<Carried>(d.carried, CAPS.carried),
@@ -186,6 +193,7 @@ export function sanitizeData(input: unknown): Data {
       acceptLimit: str(s.acceptLimit, base.settings.acceptLimit, 20),
       tip: str(s.tip, base.settings.tip, 20),
       relays: relays.length ? relays : base.settings.relays,
+      displayName: str(s.displayName, '', 24).replace(/[\u0000-\u001f]/g, ''),
     },
     relaySince: typeof d.relaySince === 'number' ? d.relaySince : 0,
     audit: asArray<AuditEntry>(d.audit, CAPS.audit),
@@ -582,6 +590,10 @@ export function setSettings(patch: Partial<Settings>) {
 
 export function setReserveCache(raw: bigint) {
   commit({ ...d(), reserveCache: { raw: raw.toString(), at: Date.now() } })
+}
+
+export function setWalletCache(raw: bigint) {
+  commit({ ...d(), walletCache: { raw: raw.toString(), at: Date.now() } })
 }
 
 export function upsertContact(c: Contact): boolean {

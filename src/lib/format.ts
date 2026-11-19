@@ -2,11 +2,22 @@ import { formatUsdc, parseUsdc } from '@/onchain-money'
 
 export const shortAddress = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
-/** Two decimals for display, trimming nothing so balances line up. */
+/**
+ * Two decimals for display. Integer maths on the string from viem: the fraction is TRUNCATED, never rounded,
+ * so 19.996670 shows as 19.99 and never as 20.00.
+ */
 export function fmtUsdc(raw: bigint): string {
   const [whole, frac = ''] = formatUsdc(raw).split('.')
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return `${grouped}.${(frac + '00').slice(0, 2)}`
+}
+
+/** The exact amount: up to 6 decimals, trailing zeros trimmed (19.99667, 5, 0.000001). */
+export function fmtExact(raw: bigint): string {
+  const [whole, frac = ''] = formatUsdc(raw).split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const f = frac.slice(0, 6).replace(/0+$/, '')
+  return f ? `${grouped}.${f}` : grouped
 }
 
 /** A decimal amount from a stranger, or '' when it is not a plain number. Never throws. */
