@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { usePublicClient } from 'wagmi'
+import { CHAIN } from '@/lib/mesh'
+import { syncChain } from '@/lib/chainSync'
 import { roleOf } from '@/lib/items'
 import { useMeshState } from '@/lib/store'
 import { useChecks, useMyAddresses } from '@/hooks/useMeshData'
@@ -14,6 +19,19 @@ export function HistoryTab() {
   const sheets = useSheets()
   const [saving, setSaving] = useState<string | null>(null)
   const checks = useChecks(items)
+  const client = usePublicClient({ chainId: CHAIN.id })
+  const [checking, setChecking] = useState(false)
+  const refresh = async () => {
+    setChecking(true)
+    try {
+      const n = await syncChain(client as never, { deep: true })
+      toast.success(n > 0 ? `${n} new ${n === 1 ? 'payment' : 'payments'} found.` : 'Up to date. No new payments.')
+    } catch {
+      toast.error('Could not reach the network. Check your connection and try again.')
+    } finally {
+      setChecking(false)
+    }
+  }
   const [filter, setFilter] = useState<Filter>('all')
 
   const shown = items.filter((i) => {
@@ -26,7 +44,18 @@ export function HistoryTab() {
 
   return (
     <section className="glass rounded-3xl p-5">
-      <h2 className="display text-xl font-bold">History</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="display text-xl font-bold">History</h2>
+        <button
+          onClick={() => void refresh()}
+          disabled={checking}
+          aria-label="Check for new payments"
+          className="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold disabled:opacity-50"
+          style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)' }}
+        >
+          <RefreshCw className={`size-3.5 ${checking ? 'animate-spin' : ''}`} /> Refresh
+        </button>
+      </div>
       <div className="mt-3 grid grid-cols-4 gap-1.5" role="tablist" aria-label="Filter payments">
         {(['all', 'sent', 'received', 'pending'] as const).map((f) => (
           <button

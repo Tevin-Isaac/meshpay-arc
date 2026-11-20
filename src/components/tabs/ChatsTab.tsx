@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { MessageSquarePlus, ShieldQuestion, Trash2, UserPlus } from 'lucide-react'
 import { fmtDecimal, timeAgo } from '@/lib/format'
+import { formatUsdc } from '@/onchain-money'
 import { patchContact, removeContact, useMeshState, type ChatMessage, type Contact } from '@/lib/store'
 import { ContactSheet } from '../ContactSheet'
 import { DeleteContactSheet } from '../ContactActions'
@@ -16,7 +17,7 @@ function preview(m?: ChatMessage): string {
 }
 
 export function ChatsTab() {
-  const { contacts, messages } = useMeshState()
+  const { contacts, messages, items, address } = useMeshState()
   const [openAddress, setOpenAddress] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
   const [deleting, setDeleting] = useState<Contact | null>(null)
@@ -40,7 +41,13 @@ export function ChatsTab() {
     .sort((a, b) => (last.get(b.address.toLowerCase())?.ts ?? b.addedAt) - (last.get(a.address.toLowerCase())?.ts ?? a.addedAt))
 
   const row = (c: Contact) => {
-    const m = last.get(c.address.toLowerCase())
+    let m = last.get(c.address.toLowerCase())
+    // A payment between us that is newer than the last message is the latest thing in the conversation.
+    const pay = items.filter((i) => !i.label && i.kind !== 'cashout' && [i.from, i.to].some((a) => a.toLowerCase() === c.address.toLowerCase()) && [i.from, i.to].some((a) => a.toLowerCase() === address.toLowerCase())).sort((a, b) => b.createdAt - a.createdAt)[0]
+    if (pay && (!m || pay.createdAt > m.ts)) {
+      const out = pay.from.toLowerCase() === address.toLowerCase()
+      m = { id: pay.id, peer: c.address, dir: out ? 'out' : 'in', kind: 'payment', amount: formatUsdc(BigInt(pay.amount)), verified: true, ts: pay.createdAt, status: 'received' }
+    }
     return (
       <li key={c.address}>
         <div className="flex items-center gap-1">

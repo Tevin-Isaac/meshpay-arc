@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { formatUsdc } from '@/onchain-money'
 import { ArrowLeft, BadgeCheck, Clock, Hand, Send, ShieldCheck, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseUsdc } from '@/onchain-money'
@@ -17,7 +18,7 @@ import { useSheets } from './shell/useSheets'
 
 /** One encrypted conversation: text, payment requests and payments in the same thread. */
 export function Thread({ contact, onBack }: { contact: Contact; onBack: () => void }) {
-  const { messages, items } = useMeshState()
+  const { messages, items, address } = useMeshState()
   const { online } = useNet()
   const relays = useRelayStatus()
   const sheets = useSheets()
@@ -33,6 +34,16 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
     () => messages.filter((m) => m.peer.toLowerCase() === contact.address.toLowerCase()).sort((a, b) => a.ts - b.ts),
     [messages, contact.address],
   )
+  // Payments between us that were not sent through this chat (paid online, or by QR) still belong in the conversation, for both people.
+  const timeline = useMemo(() => {
+    const linked = new Set(thread.map((m) => m.voucherId).filter(Boolean))
+    const me = address.toLowerCase()
+    const peer = contact.address.toLowerCase()
+    const pays = items
+      .filter((i) => !i.label && i.kind !== 'cashout' && !linked.has(i.id) && ((i.from.toLowerCase() === me && i.to.toLowerCase() === peer) || (i.from.toLowerCase() === peer && i.to.toLowerCase() === me)))
+      .map((i) => ({ t: 'pay' as const, ts: i.createdAt, item: i, mine: i.from.toLowerCase() === me }))
+    return [...thread.map((m) => ({ t: 'msg' as const, ts: m.ts, m })), ...pays].sort((a, b) => a.ts - b.ts)
+  }, [thread, items, address, contact.address])
   useEffect(() => {
     purgeExpiredMessages() // opening a thread drops anything older than 24 hours
   }, [contact.address])
@@ -41,7 +52,7 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
   }, [contact.address, contact.pubkey])
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' })
-  }, [thread.length])
+  }, [timeline.length])
 
   const send = async () => {
     const body = text.trim()
@@ -136,21 +147,34 @@ export function Thread({ contact, onBack }: { contact: Contact; onBack: () => vo
         Messages disappear from this device after 24 hours. Payments and their status stay.
       </p>
       <div className="flex-1 space-y-2 pb-3" aria-live="polite">
-        {thread.length === 0 && (
+        {timeline.length === 0 && (
           <p className="py-10 text-center text-sm text-pretty" style={{ color: 'var(--subtle)' }}>
             Messages here are encrypted on your phone. Say hello, request a payment, or send one.
           </p>
         )}
-        {thread.map((m) => (
-          <Bubble
-            key={m.id}
-            m={m}
-            item={items.find((i) => i.id === m.voucherId)}
-            name={contact.name}
-            onPay={() => sheets.open('send', { to: contact.address, amount: m.amount, ref: m.ref, note: m.text })}
-            onCode={() => setOfflineCode(m.code ?? null)}
-          />
-        ))}
+        {timeline.map((e) =>
+          e.t === 'msg' ? (
+            <Bubble
+              key={e.m.id}
+              m={e.m}
+              item={items.find((i) => i.id === e.m.voucherId)}
+              name={contact.name}
+              onPay={() => sheets.open('send', { to: contact.address, amount: e.m.amount, ref: e.m.ref, note: e.m.text })}
+              onCode={() => setOfflineCode(e.m.code ?? null)}
+            />
+          ) : (
+            <div key={e.item.id} className={`flex ${e.mine ? 'justify-end' : 'justify-start'}`}>
+              <div className="max-w-[82%] space-y-1.5 rounded-2xl px-3.5 py-2.5 text-sm" style={{ background: e.mine ? 'var(--tint-accent)' : 'var(--surface-muted)', border: `1px solid ${e.mine ? 'var(--line-accent)' : 'var(--border)'}` }}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--subtle)' }}>
+                  {e.mine ? 'You paid' : `${contact.name} paid you`}
+                </div>
+                <div className="display text-xl font-bold tabular-nums">{fmtDecimal(formatUsdc(BigInt(e.item.amount)))} USDC</div>
+                <Chip tone="good">{e.item.status === 'pending' ? 'Signed · settles when online' : e.item.kind === 'online' ? 'Paid on Arc' : 'Settled on Arc'}</Chip>
+                <div className="text-[10px]" style={{ color: 'var(--subtle)' }}>{timeAgo(e.ts)}</div>
+              </div>
+            </div>
+          ),
+        )}
         <div ref={bottom} />
       </div>
 
@@ -282,6 +306,7 @@ function Bubble({ m, item, name, onPay, onCode }: { m: ChatMessage; item?: { sta
             </>
           )}
           {mine && m.status === 'sent' && <span>Sent</span>}
+          {mine && m.status === 'delivered' && <span style={{ color: 'var(--success)' }}>Delivered</span>}
         </div>
       </div>
     </div>

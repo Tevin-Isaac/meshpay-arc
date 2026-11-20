@@ -1,4 +1,4 @@
-import type { Hex } from 'viem'
+import type { Address, Hex } from 'viem'
 import { formatUsdc } from '@/onchain-money'
 import { fromB64Url } from '../mesh'
 import { ingestVoucher } from '../ingest'
@@ -47,12 +47,12 @@ async function tryPublish(id: string, box: Uint8Array, recipientPub: Hex, sentAt
   if (!getOnline() || relayStatus().connected === 0) return false
   if (isExpired(sentAt)) return false // past its 24 hours: never publish
   const acks = await publish(buildRelayEvent(xonlyOf(recipientPub), box, sentAt))
-  if (acks > 0) updateMessage(id, { status: 'sent' })
+  if (acks > 0 && getState().messages.find((m) => m.id === id)?.status === 'queued') updateMessage(id, { status: 'sent' })
   return acks > 0
 }
 
 export interface Content {
-  k: Inner['k']
+  k: Exclude<Inner['k'], 'ack'>
   x?: string
   a?: string
   r?: Hex
@@ -127,6 +127,12 @@ export async function handleBox(box: Uint8Array): Promise<BoxResult> {
   const peer = inner.f
   if (peer.toLowerCase() === me.toLowerCase()) return 'invalid'
   const known = state.contacts.find((c) => c.address.toLowerCase() === peer.toLowerCase())
+  if (inner.k === 'ack') {
+    // A delivery receipt for one of my messages: mark it delivered. Receipts are never shown or stored, and never create a contact.
+    const mine = known && inner.x ? state.messages.find((m) => m.id === inner.x && m.dir === 'out' && m.peer.toLowerCase() === peer.toLowerCase()) : undefined
+    if (mine) updateMessage(mine.id, { status: 'delivered' })
+    return 'delivered'
+  }
   if (!known) {
     // A stranger: keep them in a requests folder until the user accepts. The folder has a cap so nobody can flood it.
     const ok = upsertContact({ address: peer, name: `${peer.slice(0, 6)}…${peer.slice(-4)}`, pubkey: senderPub, verified: false, addedAt: Date.now(), request: true })
@@ -162,7 +168,18 @@ export async function handleBox(box: Uint8Array): Promise<BoxResult> {
     ts: Math.min(inner.t * 1000, Date.now()),
     status: 'received',
   })
+  if (stored && !getState().contacts.find((c) => c.address.toLowerCase() === peer.toLowerCase())?.request) void sendReceipt(peer, senderPub, inner.i)
   return stored ? 'delivered' : 'duplicate'
+}
+
+/** Tells the sender their message reached this device. Best effort, never stored, only to people already in contacts. */
+async function sendReceipt(peer: Address, pub: Hex, id: string) {
+  try {
+    const inner = await buildInner(getDeviceAccount(), peer, { k: 'ack', x: id })
+    await publish(buildRelayEvent(xonlyOf(pub), sealBox(packInner(inner), pub), inner.t))
+  } catch {
+    // the message itself was delivered; the receipt is a bonus
+  }
 }
 
 /** Removes characters that reorder or hide text, but keeps line breaks. */

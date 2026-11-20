@@ -146,15 +146,36 @@ export function useChainSync(active: boolean) {
     }
     void run()
     const timer = setInterval(() => void run(), 8000)
+    void checkForNewVersion()
+    window.addEventListener('focus', checkForNewVersion)
     window.addEventListener('focus', run)
     document.addEventListener('visibilitychange', run)
     return () => {
       stopped = true
       clearInterval(timer)
       window.removeEventListener('focus', run)
+      window.removeEventListener('focus', checkForNewVersion)
       document.removeEventListener('visibilitychange', run)
     }
   }, [active, online, client])
+}
+
+let versionToasted = false
+/** A tab left open for days keeps running old code. If a newer build is live, say so and offer a one-tap reload. */
+async function checkForNewVersion() {
+  if (versionToasted || document.visibilityState !== 'visible') return
+  try {
+    const running = [...document.scripts].map((s) => /\/(index-[\w-]+\.js)/.exec(s.src)?.[1]).find(Boolean)
+    if (!running) return
+    const html = await (await fetch(location.pathname, { cache: 'no-store' })).text()
+    const live = /\/(index-[\w-]+\.js)/.exec(html)?.[1]
+    if (live && live !== running) {
+      versionToasted = true
+      toast('A newer version of Wayamesh is ready.', { duration: Infinity, action: { label: 'Reload', onClick: () => location.reload() } })
+    }
+  } catch {
+    // offline or blocked: keep running what we have
+  }
 }
 
 /** Lists this wallet's chat key (no name) so contacts saved by address can message it, and finds the keys of such contacts. */

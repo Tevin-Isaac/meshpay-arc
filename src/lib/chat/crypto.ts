@@ -103,7 +103,7 @@ export function decodeCard(text: string): ContactCard {
 
 // ---- message envelope ----
 
-export type MessageKind = 'text' | 'payment' | 'request'
+export type MessageKind = 'text' | 'payment' | 'request' | 'ack'
 
 export interface Inner {
   v: 1
@@ -174,7 +174,7 @@ function validateInner(value: unknown): Inner {
   if (typeof m.i !== 'string' || !HEX_ID.test(m.i)) throw bad('id')
   if (typeof m.t !== 'number' || !Number.isInteger(m.t) || m.t > now + 86_400 || m.t < now - 90 * 86_400) throw bad('time')
   if (typeof m.f !== 'string' || !isAddress(m.f) || typeof m.o !== 'string' || !isAddress(m.o)) throw bad('address')
-  if (m.k !== 'text' && m.k !== 'payment' && m.k !== 'request') throw bad('kind')
+  if (m.k !== 'text' && m.k !== 'payment' && m.k !== 'request' && m.k !== 'ack') throw bad('kind')
   if (m.x !== undefined && (typeof m.x !== 'string' || m.x.length > 500)) throw bad('text')
   if (m.a !== undefined && (typeof m.a !== 'string' || !AMOUNT.test(m.a))) throw bad('amount')
   if (m.r !== undefined && (typeof m.r !== 'string' || !HEX_REF.test(m.r))) throw bad('ref')

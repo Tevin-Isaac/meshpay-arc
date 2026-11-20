@@ -70,7 +70,7 @@ export interface ChatMessage {
   ref?: Hex
   voucherId?: string
   ts: number
-  status: 'queued' | 'sent' | 'received'
+  status: 'queued' | 'sent' | 'delivered' | 'received'
   /** For payments: the attached payment was checked on this device and pays me (or I signed it). */
   verified?: boolean
   /** Sealed offline code for an outgoing message, so it can be handed over without a connection. */
